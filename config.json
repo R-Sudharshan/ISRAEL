@@ -1,0 +1,64 @@
+{
+  "simulation": {
+    "duration_hours": 1,
+    "time_jitter_seconds": 2,
+    "start_time_offset_hours": 240
+  },
+  "network": {
+    "internal_cidrs": [
+      "192.168.1.0/24",
+      "10.10.0.0/16"
+    ],
+    "external_cidrs": [
+      "8.8.8.0/24",
+      "1.1.1.0/24",
+      "104.21.0.0/16",
+      "142.250.0.0/16"
+    ],
+    "dns_servers": [
+      "8.8.8.8",
+      "1.1.1.1"
+    ]
+  },
+  "devices": {
+    "workstations": {
+      "count": 50,
+      "prefix": "wkstn-"
+    },
+    "servers": {
+      "count": 5,
+      "prefix": "srv-"
+    },
+    "iot": {
+      "count": 10,
+      "prefix": "iot-cam-"
+    }
+  },
+  "attacks": {
+    "iot_bruteforce": {
+      "enabled": true,
+      "target_port": 22,
+      "attempts_per_run": 500,
+      "success_rate": 0.001
+    },
+    "dns_tunneling": {
+      "enabled": true,
+      "domain_suffix": "evil.cc",
+      "query_rate_per_minute": 60
+    },
+    "beaconing": {
+      "enabled": true,
+      "interval_seconds": 300,
+      "jitter_percent": 0.05,
+      "target_ip": "198.51.100.55"
+    }
+  },
+  "baseline": {
+      "services": [
+          {"name": "HTTPS", "port": 443, "proto": 6, "weight": 60},
+          {"name": "HTTP", "port": 80, "proto": 6, "weight": 20},
+          {"name": "DNS", "port": 53, "proto": 17, "weight": 15},
+          {"name": "NTP", "port": 123, "proto": 17, "weight": 5}
+      ]
+  }
+}

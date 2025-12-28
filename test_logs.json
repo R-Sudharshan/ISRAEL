@@ -1,0 +1,35 @@
+[
+  {
+    "timestamp": "2025-12-28 11:28:31",
+    "srcip": "192.168.1.10",
+    "dstip": "8.8.8.8",
+    "device_type": "camera",
+    "proto": "dns",
+    "qname": "3aa.2bb.3cc.verylongsubdomainfortunnelingcheckthatisdefinitelytoolongtoberealgoodluck.example.com",
+    "action": "allow"
+  },
+  {
+    "timestamp": "2025-12-28 11:29:31",
+    "srcip": "192.168.1.50",
+    "dstip": "10.0.0.5",
+    "device_type": "printer",
+    "proto": "ssh",
+    "action": "login_failed"
+  },
+  {
+    "timestamp": "2025-12-28 11:30:31",
+    "srcip": "192.168.1.50",
+    "dstip": "10.0.0.5",
+    "device_type": "printer",
+    "proto": "ssh",
+    "action": "login_failed"
+  },
+  {
+    "timestamp": "2025-12-28 11:31:31",
+    "srcip": "192.168.1.20",
+    "dstip": "1.1.1.1",
+    "device_type": "thermostat",
+    "proto": "https",
+    "action": "allow"
+  }
+]
