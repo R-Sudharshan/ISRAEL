@@ -2,7 +2,7 @@
   "simulation": {
     "duration_hours": 1,
     "time_jitter_seconds": 2,
-    "start_time_offset_hours": 240
+    "start_time_offset_hours": 0
   },
   "network": {
     "internal_cidrs": [
@@ -54,11 +54,42 @@
     }
   },
   "baseline": {
-      "services": [
-          {"name": "HTTPS", "port": 443, "proto": 6, "weight": 60},
-          {"name": "HTTP", "port": 80, "proto": 6, "weight": 20},
-          {"name": "DNS", "port": 53, "proto": 17, "weight": 15},
-          {"name": "NTP", "port": 123, "proto": 17, "weight": 5}
-      ]
+    "services": [
+      {
+        "name": "HTTPS",
+        "port": 443,
+        "proto": 6,
+        "weight": 60
+      },
+      {
+        "name": "HTTP",
+        "port": 80,
+        "proto": 6,
+        "weight": 20
+      },
+      {
+        "name": "DNS",
+        "port": 53,
+        "proto": 17,
+        "weight": 15
+      },
+      {
+        "name": "NTP",
+        "port": 123,
+        "proto": 17,
+        "weight": 5
+      }
+    ]
+  },
+  "detection_rules": {
+    "ssh": {
+      "check_iot_types": true,
+      "fail_threshold_enabled": true
+    },
+    "dns": {
+      "entropy_threshold": 3.7,
+      "max_length": 41,
+      "volume_threshold": 13
+    }
   }
 }

@@ -44,8 +44,8 @@ def ingest_logs():
             for d in detections:
                 alert_data = format_alert_object(d, log, log_id)
                 # 4. Store Alert
-                sql_alert = "INSERT INTO alerts (severity, detection_type, src_ip, device, timestamp, raw_log_reference) VALUES (%s, %s, %s, %s, %s, %s)"
-                cursor.execute(sql_alert, (alert_data['severity'], alert_data['detection_type'], alert_data['src_ip'], alert_data['device'], alert_data['timestamp'], log_id))
+                sql_alert = "INSERT INTO alerts (severity, detection_type, src_ip, device, timestamp, raw_log_reference, mitre_tactic, mitre_technique) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+                cursor.execute(sql_alert, (alert_data['severity'], alert_data['detection_type'], alert_data['src_ip'], alert_data['device'], alert_data['timestamp'], log_id, alert_data['mitre_tactic'], alert_data['mitre_technique']))
                 alerts_generated += 1
             
             processed_count += 1

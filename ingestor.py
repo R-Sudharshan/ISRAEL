@@ -55,7 +55,7 @@ class LogIngestor:
                 "src_ip": raw_log.get('srcip', '0.0.0.0'),
                 "dst_ip": raw_log.get('dstip', '0.0.0.0'),
                 "device_type": raw_log.get('device_type') or raw_log.get('devid', 'unknown'),
-                "protocol": raw_log.get('proto') or raw_log.get('service', 'unknown').lower(),
+                "protocol": (raw_log.get('service') or raw_log.get('proto') or 'unknown').lower(),
                 "action": raw_log.get('action', 'unknown'),
                 "dns_qname": raw_log.get('qname'), # specialized field for DNS logs
                 "raw_log": json.dumps(raw_log)

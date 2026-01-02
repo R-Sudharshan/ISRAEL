@@ -40,27 +40,25 @@ class AttackSimulator:
         target_port = self.iot_config["target_port"]
         attempts = self.iot_config["attempts_per_run"]
         
-        # Pick a compromised device (simulated)
+        
         iot_count = self.config["devices"]["iot"]["count"]
         victim_idx = random.randint(1, iot_count)
-        src_ip = f"192.168.1.{200 + victim_idx}" # IoT range assumption
+        src_ip = f"192.168.1.{200 + victim_idx}"
         dev_name = f"{self.config['devices']['iot']['prefix']}{victim_idx}"
         
-        # Pick a target external IP
+        
         dst_ip = self._get_random_external_ip()
         
-        # Attack happens in a burst
+       
         attack_start = self._get_start_time(start_time, duration_hours)
         
         for i in range(attempts):
             timestamp = attack_start + timedelta(milliseconds=i * random.randint(50, 200)) # Fast interval
             
-            # Most fail usually
+   
             is_success = random.random() < self.iot_config["success_rate"]
-            action = "accept" if is_success else "deny" # Firewall might allow the traffic, but the login fails. 
-            # Actually for network logs, it's usually "accept" (connection established) unless blocked by policy.
-            # But "bruteforce" usually implies application layer failure, which FGT logs as acceptable traffic unless IPS blocks it.
-            # Let's say the firewall POLICY allows SSH out, so action is accept.
+            action = "accept" if is_success else "deny"
+            
             
             log = {
                 "timestamp": timestamp,
@@ -70,9 +68,9 @@ class AttackSimulator:
                 "dstport": target_port,
                 "proto": 6,
                 "service": "SSH",
-                "action": "accept", # The connection itself is allowed
+                "action": "accept", 
                 "policyid": 101,
-                "sentbyte": random.randint(100, 300), # Small handshake
+                "sentbyte": random.randint(100, 300), 
                 "rcvdbyte": random.randint(100, 300),
                 "duration": random.randint(1, 3),
                 "user": "N/A",
@@ -92,11 +90,11 @@ class AttackSimulator:
         logs = []
         domain_suffix = self.dns_config["domain_suffix"]
         
-        # Internal compromised host
+    
         src_ip = "192.168.1.105" 
         dns_server = self.config["network"]["dns_servers"][0] # 8.8.8.8
         
-        # Continuous low-to-medium noise
+   
         total_minutes = duration_hours * 60
         rate = self.dns_config["query_rate_per_minute"]
         total_queries = total_minutes * rate
@@ -104,10 +102,8 @@ class AttackSimulator:
         current_time = start_time
         
         for i in range(total_queries):
-            # Advance time slightly
             current_time += timedelta(seconds=60/rate + random.uniform(-0.1, 0.1))
             
-            # Craft weird subdomain
             subdomain_len = random.randint(30, 60) # Long subdomain
             subdomain = ''.join(random.choices(string.ascii_lowercase + string.digits, k=subdomain_len))
             fqdn = f"{subdomain}.{domain_suffix}"
@@ -122,8 +118,8 @@ class AttackSimulator:
                 "service": "DNS",
                 "action": "accept",
                 "policyid": 1,
-                "sentbyte": random.randint(80, 150), # Request size
-                "rcvdbyte": random.randint(200, 500), # Response (can be payload)
+                "sentbyte": random.randint(80, 150),
+                "rcvdbyte": random.randint(200, 500),
                 "duration": 0,
                 "user": "bob.smith",
                 "device_type": "Windows PC",
@@ -144,13 +140,12 @@ class AttackSimulator:
         interval = self.beacon_config["interval_seconds"]
         jitter = self.beacon_config["jitter_percent"]
         
-        src_ip = "192.168.1.55" # Infected host
+        src_ip = "192.168.1.55"
         
         current_time = start_time
         end_time = start_time + timedelta(hours=duration_hours)
         
         while current_time < end_time:
-            # Add jitter
             jitter_sec = interval * jitter
             actual_interval = interval + random.uniform(-jitter_sec, jitter_sec)
             current_time += timedelta(seconds=actual_interval)
@@ -162,13 +157,13 @@ class AttackSimulator:
                 "timestamp": current_time,
                 "srcip": src_ip,
                 "dstip": c2_ip,
-                "srcport": random.randint(49152, 65535), # Ephemeral
+                "srcport": random.randint(49152, 65535), 
                 "dstport": 443,
                 "proto": 6,
                 "service": "HTTPS",
                 "action": "accept",
                 "policyid": 1,
-                "sentbyte": 1200, # Very consistent sizes
+                "sentbyte": 1200,
                 "rcvdbyte": 4500,
                 "duration": random.randint(1, 2),
                 "user": "SYSTEM",

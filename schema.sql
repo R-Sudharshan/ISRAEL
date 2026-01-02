@@ -9,6 +9,10 @@ CREATE TABLE IF NOT EXISTS logs (
     device_type VARCHAR(100),
     protocol VARCHAR(20),
     action VARCHAR(50),
+    policyid INT,
+    sentbyte BIGINT DEFAULT 0,
+    rcvdbyte BIGINT DEFAULT 0,
+    user VARCHAR(100) DEFAULT 'N/A',
     raw_log TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -21,6 +25,8 @@ CREATE TABLE IF NOT EXISTS alerts (
     device VARCHAR(100),
     timestamp DATETIME NOT NULL,
     raw_log_reference INT,
+    mitre_tactic VARCHAR(100),
+    mitre_technique VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (raw_log_reference) REFERENCES logs(id)
 );

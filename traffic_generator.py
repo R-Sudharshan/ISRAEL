@@ -100,45 +100,92 @@ class TrafficGenerator:
         print(f"[-] Generated {len(logs)} baseline events.")
         return logs
 
-    def run(self):
-        # Setup time
-        # Use fixed start time for determinism if needed, or now
-        # Config says start_time_offset_hours
+    def run(self, counts=None):
+        """
+        Runs the simulation. 
+        'counts' can be a dict specifying exactly how many of each to generate.
+        """
         now = datetime.now()
-        start_offset = self.config["simulation"].get("start_time_offset_hours", 0)
-        start_time = now - timedelta(hours=start_offset)
+        # We align the simulation to END at 'now'
         duration = self.config["simulation"]["duration_hours"]
+        start_time = now - timedelta(hours=duration)
         
-        # 1. Generate Baseline
-        all_logs = self.generate_baseline(start_time, duration)
+        all_logs = []
         
-        # 2. Generate Attacks
-        print("[-] Injecting attacks...")
-        
-        # IoT Bruteforce
-        iot_logs = self.attacker.generate_iot_bruteforce(start_time, duration)
-        print(f"    - Injected {len(iot_logs)} IoT bruteforce events")
-        all_logs.extend(iot_logs)
-        
-        # DNS Tunneling
-        dns_logs = self.attacker.generate_dns_tunneling(start_time, duration)
-        print(f"    - Injected {len(dns_logs)} DNS tunneling events")
-        all_logs.extend(dns_logs)
-        
-        # Beaconing
-        beacon_logs = self.attacker.generate_beaconing(start_time, duration)
-        print(f"    - Injected {len(beacon_logs)} Beaconing events")
-        all_logs.extend(beacon_logs)
+        if counts:
+            # GRANULAR MODE
+            if counts.get('baseline', 0) > 0:
+                # We reuse generate_baseline but limit it or modify it
+                # For simplicity, we generate a small batch based on the requested count
+                print(f"[-] Generating {counts['baseline']} baseline events...")
+                services = self.config["baseline"]["services"]
+                service_choices = [s for s in services]
+                service_weights = [s["weight"] for s in services]
+                
+                for _ in range(counts['baseline']):
+                    svc = random.choices(service_choices, weights=service_weights, k=1)[0]
+                    dt = random.uniform(0, duration * 3600)
+                    ts = start_time + timedelta(seconds=dt)
+                    log = {
+                        "timestamp": ts,
+                        "srcip": self._get_random_internal_ip(),
+                        "dstip": self._get_random_external_ip(),
+                        "srcport": random.randint(10000, 65000),
+                        "dstport": svc["port"],
+                        "proto": svc["proto"],
+                        "service": svc["name"],
+                        "action": "accept",
+                        "policyid": 1,
+                        "sentbyte": random.randint(100, 5000),
+                        "rcvdbyte": random.randint(100, 50000),
+                        "duration": random.randint(1, 60),
+                        "user": f"user-{random.randint(1, 50)}",
+                        "device_type": "workstation",
+                        "level": "notice",
+                        "logid": "0000000013"
+                    }
+                    all_logs.append(log)
+
+            if counts.get('ssh', 0) > 0:
+                print(f"[-] Injecting {counts['ssh']} SSH events...")
+                # Temporarily override config for the generator
+                orig_ssh = self.config["attacks"]["iot_bruteforce"]["attempts_per_run"]
+                self.config["attacks"]["iot_bruteforce"]["attempts_per_run"] = counts['ssh']
+                all_logs.extend(self.attacker.generate_iot_bruteforce(start_time, duration))
+                self.config["attacks"]["iot_bruteforce"]["attempts_per_run"] = orig_ssh
+
+            if counts.get('dns', 0) > 0:
+                print(f"[-] Injecting {counts['dns']} DNS events...")
+                # We need to modify AttackSimulator or just generate here. 
+                # For now, we take a fraction of the standard rate to match the requested count roughly
+                dns_logs = self.attacker.generate_dns_tunneling(start_time, duration)
+                if len(dns_logs) > counts['dns']:
+                    all_logs.extend(dns_logs[:counts['dns']])
+                else:
+                    all_logs.extend(dns_logs)
+
+            if counts.get('beacon', 0) > 0:
+                print(f"[-] Injecting {counts['beacon']} Beaconing events...")
+                beacon_logs = self.attacker.generate_beaconing(start_time, duration)
+                if len(beacon_logs) > counts['beacon']:
+                    all_logs.extend(beacon_logs[:counts['beacon']])
+                else:
+                    all_logs.extend(beacon_logs)
+        else:
+            # BULK MODE (Default)
+            all_logs.extend(self.generate_baseline(start_time, duration))
+            print("[-] Injecting attacks...")
+            all_logs.extend(self.attacker.generate_iot_bruteforce(start_time, duration))
+            all_logs.extend(self.attacker.generate_dns_tunneling(start_time, duration))
+            all_logs.extend(self.attacker.generate_beaconing(start_time, duration))
         
         # 3. Sort by timestamp
-        print("[-] Sorting logs by timestamp...")
         all_logs.sort(key=lambda x: x["timestamp"])
         
         # 4. Final Formatting & Write
-        # Using build_log_entry to ensure defaults
         final_logs = [self.formatter.build_log_entry(log) for log in all_logs]
         
-        print("[-] Writing output...")
+        print(f"[-] Total logs generated: {len(final_logs)}")
         self.writer.write_csv(final_logs)
         self.writer.write_json(final_logs, "simulated_fortigate_logs")
         self.writer.write_raw(final_logs, self.formatter)
@@ -147,7 +194,22 @@ class TrafficGenerator:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Synthetic FortiGate Log Generator")
     parser.add_argument("--config", default="config.json", help="Path to config file")
+    parser.add_argument("--baseline", type=int, default=0, help="Number of baseline logs to generate")
+    parser.add_argument("--ssh", type=int, default=0, help="Number of SSH attack logs to generate")
+    parser.add_argument("--dns", type=int, default=0, help="Number of DNS attack logs to generate")
+    parser.add_argument("--beacon", type=int, default=0, help="Number of Beacon logs to generate")
     args = parser.parse_args()
     
     gen = TrafficGenerator(args.config)
-    gen.run()
+    
+    # If any specific counts are provided, use granular mode
+    if args.baseline or args.ssh or args.dns or args.beacon:
+        granular_counts = {
+            "baseline": args.baseline,
+            "ssh": args.ssh,
+            "dns": args.dns,
+            "beacon": args.beacon
+        }
+        gen.run(granular_counts)
+    else:
+        gen.run()
