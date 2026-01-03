@@ -14,6 +14,90 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# --- 1.1 AUTH MANAGER ---
+from auth_manager import AuthManager
+from streamlit_cookies_controller import CookieController
+
+# Initialize controller
+controller = CookieController()
+
+# Safe Session State Init
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
+    st.session_state.user_role = None
+    st.session_state.username = None
+    st.session_state.user_id = None
+
+# --- COOKIE CHECK ---
+if not st.session_state.logged_in:
+    saved_token = controller.get("forloggen_user")
+    if saved_token:
+        try:
+            user_id = AuthManager.get_user_id(saved_token)
+            if user_id:
+                conn = get_db_connection()
+                c = conn.cursor(dictionary=True)
+                c.execute("SELECT * FROM users WHERE username = %s", (saved_token,))
+                u = c.fetchone()
+                c.close()
+                conn.close()
+                
+                if u:
+                    st.session_state.logged_in = True
+                    st.session_state.username = u['username']
+                    st.session_state.user_role = u['role']
+                    st.session_state.user_id = u['id']
+        except Exception as e:
+            pass
+
+# --- LOGIN PAGE LOGIC ---
+if not st.session_state.logged_in:
+    st.markdown("""
+    <style>
+        .stApp { background-color: #f6f8fa; }
+        .login-box {
+            max-width: 400px;
+            margin: 100px auto;
+            padding: 30px;
+            background: white;
+            border: 1px solid #d0d7de;
+            border-radius: 6px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #24292f;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown('<div class="login-header"><h2>FORLOGGEN ID</h2><p>Restricted Access</p></div>', unsafe_allow_html=True)
+        with st.form("login_form"):
+            user_input = st.text_input("Username")
+            pass_input = st.text_input("Password", type="password")
+            submitted = st.form_submit_button("Sign In", use_container_width=True, type="primary")
+            
+            if submitted:
+                auth = AuthManager.login(user_input, pass_input)
+                if auth:
+                    st.session_state.logged_in = True
+                    st.session_state.username = auth['username']
+                    st.session_state.user_role = auth['role']
+                    st.session_state.user_id = auth['id']
+                    
+                    # Set Cookie (Expires in 7 days)
+                    controller.set("forloggen_user", auth['username'], max_age=60*60*24*7)
+                    
+                    st.toast(f"Welcome back, {auth['username']}")
+                    st.rerun()
+                else:
+                    st.error("Invalid credentials")
+    
+    st.stop()
+
 # --- 2. CUSTOM CSS (ENTERPRISE WHITE THEME) ---
 st.markdown("""
 <style>
@@ -224,7 +308,17 @@ def set_page(page_name):
 
 # --- 6. SIDEBAR NAVIGATION ---
 with st.sidebar:
-    st.markdown("### FORLOGGEN")
+    st.markdown(f"### FORLOGGEN")
+    st.caption(f"User: {st.session_state.username} | Role: {st.session_state.user_role.upper()}")
+    
+    if st.button("Logout", key="logout_btn", use_container_width=True):
+        controller.remove("forloggen_user")
+        st.session_state.logged_in = False
+        st.session_state.user_role = None
+        st.session_state.username = None
+        st.session_state.user_id = None
+        st.rerun()
+
     st.markdown("---")
     
     # Navigation styling helper
@@ -245,12 +339,16 @@ with st.sidebar:
     nav_button("Network Defense", "Network Defense", active=(current == "Network Defense")) # Was 'Status' (The Anomaly View)
     nav_button("Traffic Analysis", "Traffic Analysis", active=(current == "Traffic Analysis")) # Was 'Policy' (Baseline Stats)
     nav_button("Rule Tuning", "Rule Tuning", active=(current == "Rule Tuning"))
+    nav_button("Threat Reports", "Threat Reports", active=(current == "Threat Reports"))
     
-    # Others (Placeholders)
+    # SIMULATOR CONTROL (Production Level Integration)
+    if st.session_state.user_role == 'admin':
+        st.markdown("---")
+        st.caption("Admin Controls")
+        nav_button("Team Management", "Team Management", active=(current == "Team Management"))
+        
     st.markdown("---")
-    st.caption("System")
-    nav_button("Blocking Social", "Blocking Social", active=(current == "Blocking Social"))
-    nav_button("Routing", "Routing", active=(current == "Routing"))
+
 
     # SIMULATOR CONTROL (Production Level Integration)
     st.markdown("---")
@@ -731,6 +829,179 @@ elif st.session_state.page == "Asset Inventory":
         )
     else:
         st.info("No assets discovered.")
+
+# --- 11. ROUTE: TEAM MANAGEMENT ---
+elif st.session_state.page == "Team Management":
+    st.markdown('<div class="top-header">Team Management</div>', unsafe_allow_html=True)
+    if st.session_state.user_role != 'admin':
+        st.error("Unauthorized: Admin Access Required")
+    else:
+        # Fetch Team
+        team_members = AuthManager.get_team_members(st.session_state.user_id)
+        
+        # Summary Cards
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown(f"""
+            <div class="dashboard-module module-soft">
+                <div class="module-header">YOUR TEAM SIZE</div>
+                <div style="font-size: 32px; font-weight: bold; color: #0969da;">{len(team_members)}</div>
+                <div style="font-size: 11px; color: #57606a;">Active Analyst Accounts</div>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # New Analyst Form
+        with c2:
+            st.markdown('<div class="dashboard-module module-soft">', unsafe_allow_html=True)
+            st.markdown('<div class="module-header">REGISTER NEW ANALYST</div>', unsafe_allow_html=True)
+            with st.form("new_analyst"):
+                new_user = st.text_input("Username")
+                new_pass = st.text_input("Password", type="password")
+                if st.form_submit_button("Create Account"):
+                    if AuthManager.create_user(new_user, new_pass, 'user', managed_by=st.session_state.user_id):
+                        st.success(f"Created analyst: {new_user}")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error("Failed. Username might be taken.")
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        # List Team Members
+        st.markdown("### Mapped Analysts")
+        if team_members:
+            for member in team_members:
+                st.markdown(f"""
+                <div style="padding: 10px; border-bottom: 1px solid #d0d7de; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span style="font-weight: bold; color: #24292f;">{member['username']}</span> 
+                        <span class="status-pill status-ok">ACTIVE</span>
+                    </div>
+                    <div style="font-size: 11px; color: #57606a; font-family: monospace;">ID: {member['id']} | ROLE: {member['role'].upper()} | JOINED: {member['created_at']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.info("You have no analysts assigned to your account.")
+
+# --- 12. ROUTE: THREAT REPORTS ---
+elif st.session_state.page == "Threat Reports":
+    st.markdown('<div class="top-header">Threat Intelligence Reports</div>', unsafe_allow_html=True)
+    
+    # Refresh logic
+    if st.button("Refresh Report Data"):
+        st.cache_data.clear()
+        st.rerun()
+
+    # =========================
+    # THREAT VISUAL ANALYTICS
+    # =========================
+    st.markdown("""
+    <div class="dashboard-module module-soft">
+        <div class="module-header">THREAT DISTRIBUTION OVERVIEW</div>
+    """, unsafe_allow_html=True)
+
+    if not df_alerts.empty:
+        c1, c2 = st.columns([2, 1])
+        with c1:
+            threat_count = df_alerts['detection_type'].value_counts().reset_index()
+            threat_count.columns = ["Threat Type", "Count"]
+
+            # Professional Color Palette matching the theme
+            custom_colors = ['#cf222e', '#d96c00', '#9a6700', '#0969da', '#57606a']
+            
+            fig = px.pie(
+                threat_count,
+                names="Threat Type",
+                values="Count",
+                title=None, 
+                hole=0.6, 
+                color_discrete_sequence=custom_colors
+            )
+            fig.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)', 
+                plot_bgcolor='rgba(0,0,0,0)',
+                showlegend=True,
+                legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
+                margin=dict(t=0, b=0, l=0, r=0),
+                height=250
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with c2:
+             st.markdown("#### Execution Summary")
+             top_threat = threat_count.iloc[0]
+             
+             st.markdown(f"""
+             <div style="background-color: #f6f8fa; padding: 15px; border-radius: 6px; border-left: 4px solid #cf222e;">
+                <div style="color: #57606a; font-size: 11px; text-transform: uppercase; font-weight: 600;">Primary Vector</div>
+                <div style="color: #24292f; font-size: 18px; font-weight: bold;">{top_threat['Threat Type']}</div>
+                <div style="color: #cf222e; font-size: 24px; font-weight: bold; margin-top: 5px;">{top_threat['Count']} <span style="font-size:12px; color:#57606a;">Events</span></div>
+             </div>
+             
+             <div style="margin-top: 10px; background-color: #f6f8fa; padding: 15px; border-radius: 6px; border-left: 4px solid #9a6700;">
+                <div style="color: #57606a; font-size: 11px; text-transform: uppercase; font-weight: 600;">Active Campaign</div>
+                <div style="color: #24292f; font-size: 14px; font-weight: 600;">APT-29 Simulation</div>
+             </div>
+             """, unsafe_allow_html=True)
+
+    else:
+        st.info("No threats detected yet.")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+    # =========================
+    # SEVERITY FILTER
+    # =========================
+    st.markdown("""
+    <div class="dashboard-module module-sharp" style="margin-top: 20px;">
+        <div class="module-header">FORENSIC ALERT FILTER</div>
+    """, unsafe_allow_html=True)
+
+    severity = st.selectbox("Select Severity Scope", ["All","Critical","High","Medium","Low"])
+
+    if severity != "All":
+        filtered_alerts = df_alerts[df_alerts["severity"].str.lower() == severity.lower()]
+    else:
+        filtered_alerts = df_alerts
+
+    if not filtered_alerts.empty:
+        # Clean Table Styling
+        st.dataframe(
+            filtered_alerts[['timestamp','src_ip','detection_type','severity','mitre_technique']].style.apply(
+                lambda x: ['color: #cf222e; font-weight: bold;' if x.name == 'severity' and 'critical' in str(x.values).lower() else '' for i in x], axis=1
+            ).set_properties(**{
+                'font-family': 'monospace',
+                'font-size': '11px', 
+                'background-color': '#ffffff',
+                'color': '#57606a'
+            }),
+            use_container_width=True,
+            hide_index=True
+        )
+    else:
+         st.markdown('<div style="padding: 20px; text-align: center; color: #57606a;">No alerts match this filter criteria.</div>', unsafe_allow_html=True)
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+    # =========================
+    # MITRE SUMMARY
+    # =========================
+    st.markdown("""
+    <div class="dashboard-module module-round" style="margin-top: 20px;">
+        <div class="module-header">MITRE ATT&CK MATRIX MAPPING</div>
+    """, unsafe_allow_html=True)
+
+    if not df_alerts.empty:
+        mitre_table = (
+            df_alerts.groupby("mitre_technique")
+            .size()
+            .reset_index(name="Count")
+            .sort_values(by="Count", ascending=False)
+        )
+        st.table(mitre_table)
+    else:
+        st.info("No MITRE mapped alerts yet.")
+    st.markdown("</div>", unsafe_allow_html=True)
 
 else:
     st.info("Module under development.")
