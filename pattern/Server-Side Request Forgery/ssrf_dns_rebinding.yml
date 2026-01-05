@@ -1,0 +1,26 @@
+title: SSRF - DNS Rebinding Exploitation
+id: ssrf-005
+status: test
+description: Detects SSRF via DNS rebinding where a trusted hostname resolves to an internal IP after validation to bypass SSRF protections.
+references:
+  - https://owasp.org/www-community/attacks/DNS_rebinding
+author: SOC Detection Engineering
+date: 2026-01-05
+tags:
+  - attack.initial-access
+  - dns
+  - ssrf
+logsource:
+  category: webserver
+detection:
+  selection:
+    dns.lookup|contains: "A record changed"
+  internal_target:
+    network.request|contains:
+      - "10."
+      - "192.168."
+      - "127.0.0.1"
+  condition: selection and internal_target
+falsepositives:
+  - Rare DNS failover / CDNs
+level: critical

@@ -1,0 +1,27 @@
+rule:
+  id: XSS-MUTATION-005
+  name: Mutation XSS Detection
+  description: Detects browser DOM mutation leading to script execution
+  severity: high
+
+  logsource:
+    category: application_security
+    product: sanitizer
+
+  detection:
+    selection:
+      sanitizer_status: "passed"
+      rendered_content|contains:
+        - "<script>"
+        - "<svg"
+        - "<math"
+    condition: selection
+
+  fields:
+    - src_ip
+    - sanitizer_status
+    - rendered_content
+
+  alert:
+    message: "Mutation XSS detected after DOM rendering"
+    action: "Upgrade sanitizer and enforce CSP"

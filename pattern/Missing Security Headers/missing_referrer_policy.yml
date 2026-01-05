@@ -1,0 +1,17 @@
+title: Missing Referrer-Policy Header
+id: a5-referrer-policy-missing
+description: Detects responses missing Referrer-Policy header (Risk: Sensitive token leakage)
+status: experimental
+logsource:
+  category: webserver
+detection:
+  selection:
+    http.response.status: 200
+  filter_missing:
+    http.response.header.referrer-policy|contains: ""
+  condition: selection AND NOT filter_missing
+level: medium
+tags:
+  - web
+  - privacy
+  - data-leak

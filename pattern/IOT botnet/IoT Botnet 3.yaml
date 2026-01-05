@@ -1,0 +1,27 @@
+IoT Botnet 3
+
+title: IoT Botnet Command and Control Beaconing
+id: a8f4c1d2-5e6d-4dcb-9b41-7c2a0b3e3003
+status: test
+description: >
+  Detects periodic outbound connections from IoT devices to
+  suspicious ports commonly used for botnet C2 communication.
+author: SOC-Team
+date: 2026-01-05
+tags:
+  - attack.command-and-control
+  - attack.t1071
+  - attack.iot
+logsource:
+  category: network
+detection:
+  selection:
+    destination.port:
+      - 6667
+      - 8080
+      - 9001
+    action: connection_attempt
+  condition: selection
+falsepositives:
+  - Custom IoT management platforms
+level: high

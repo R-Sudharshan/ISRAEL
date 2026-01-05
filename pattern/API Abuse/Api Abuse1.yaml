@@ -1,0 +1,25 @@
+version: "1.0"
+rule_set: "api_abuse_detection"
+
+rule:
+  id: API-001
+  name: Excessive API Request Rate
+  severity: high
+  confidence: high
+  description: >
+    Detects clients sending an unusually high volume of requests to an API
+    endpoint within a short time window, indicating possible abuse or
+    automation.
+  conditions:
+    all:
+      - request.rate.per_minute > defined_threshold
+      - request.authenticated == true
+  evidence_fields:
+    - request.rate.per_minute
+    - client.ip
+    - request.endpoint
+  risk_reason: >
+    Excessive request rates can lead to service degradation or denial of
+    service for legitimate users.
+  references:
+    - OWASP API Security Top 10: API4 – Unrestricted Resource Consumption

@@ -1,0 +1,19 @@
+DEVICE SPOOFING3
+
+title: Device Fingerprint Spoofing Detected
+id: device-spoofing-fingerprint-003
+status: stable
+description: Detects mismatch between device fingerprint and known profile
+author: SOC Team
+date: 2026-01-06
+logsource:
+  category: authentication
+  product: nac
+detection:
+  selection:
+    fingerprint_mismatch: true
+  condition: selection
+level: medium
+tags:
+  - attack.defense_evasion
+  - attack.t1036

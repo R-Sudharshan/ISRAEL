@@ -1,0 +1,25 @@
+version: "1.0"
+rule_set: "coop_abuse_detection"
+
+rule:
+  id: COOP-003
+  name: COOP Missing on Authenticated Pages
+  severity: high
+  confidence: medium
+  description: >
+    Detects authenticated HTML responses that are missing COOP headers,
+    increasing risk of cross-origin window access.
+  conditions:
+    all:
+      - response.content_type contains "text/html"
+      - request.authenticated == true
+      - response.headers.cross-origin-opener-policy not exists
+  evidence_fields:
+    - request.authenticated
+    - request.endpoint
+    - response.headers.cross-origin-opener-policy
+  risk_reason: >
+    Authenticated pages without COOP increase exposure to cross-origin
+    interaction risks.
+  references:
+    - OWASP Web Security Testing Guide

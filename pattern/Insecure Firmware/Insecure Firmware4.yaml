@@ -1,0 +1,21 @@
+Insecure Firmware4
+
+title: IoT Firmware Signature Verification Failure
+id: iot-firmware-signature-fail-004
+status: stable
+description: Detects firmware installation without valid cryptographic signature
+author: SOC Team
+date: 2026-01-05
+logsource:
+  category: device
+  product: iot_firmware
+detection:
+  selection:
+    event_type:
+      - firmware_signature_invalid
+      - firmware_checksum_mismatch
+  condition: selection
+level: critical
+tags:
+  - attack.persistence
+  - attack.t1601

@@ -1,0 +1,23 @@
+version: "1.0"
+rule_set: "websocket_abuse_detection"
+
+rule:
+  id: WS-005
+  name: Abnormal WebSocket Message Rate
+  severity: medium
+  confidence: medium
+  description: >
+    Detects unusually high message rates on WebSocket connections,
+    which may indicate automated abuse or hijacked clients.
+  conditions:
+    all:
+      - websocket.messages.per_second > baseline_threshold
+      - websocket.connection.duration > minimal_duration
+  evidence_fields:
+    - websocket.messages.per_second
+    - websocket.connection.id
+    - client.ip
+  risk_reason: >
+    Excessive message rates may degrade service or indicate abuse.
+  references:
+    - OWASP WebSocket Security Cheat Sheet

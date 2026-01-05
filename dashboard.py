@@ -1,11 +1,23 @@
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-from api.db import get_db_connection
-import datetime
+import plotly.graph_objects as go
+from datetime import datetime, timedelta
+import random
 import time
 import subprocess
 import json
+from sqlalchemy import create_engine, text
+
+# Database Connection (Using SQLAlchemy for Pandas compatibility)
+from config import Config
+DB_URL = f"mysql+mysqlconnector://{Config.DB_USER}:{Config.DB_PASSWORD}@{Config.DB_HOST}/{Config.DB_NAME}"
+engine = create_engine(DB_URL)
+
+def get_db_connection():
+    # Helper to return engine for pandas
+    return engine
 
 # --- 1. PAGE CONFIGURATION ---
 st.set_page_config(
@@ -154,6 +166,11 @@ c1, c2, c3, c4 = st.columns([1, 1, 1, 1.2])
 
 with c1:
     st.markdown('<div class="card-header">Log Settings</div>', unsafe_allow_html=True)
+    
+    # DOMAIN SELECTION (NEW)
+    domain_opts = ["Network Traffic", "Authentication", "Endpoint / Process", "Application (Web/API)", "Asset / Inventory", "Security Alert", "DNS Log", "Cloud / Infra"]
+    domain_sel = st.selectbox("Log Style (Domain)", domain_opts)
+    
     log_volume = st.slider("Log Volume", 100, 100000, 1000, key="vol")
     st.caption("100 - 1000 - 10K - 100K")
     
@@ -189,20 +206,39 @@ with c3:
 
 with c4:
     st.markdown('<div class="card-header">Attacks</div>', unsafe_allow_html=True)
+    # Dynamic Pattern Loading
+    from pattern_manager import PatternManager
+    pm = PatternManager()
+    avail_patterns = pm.get_available_patterns()
+
+    # Pre-select some common ones if available, or just defaulting
+    # Storing selection in a dict
+    pattern_selections = {}
+    
+    # Split into columns for better layout if many
+    p_col1, p_col2 = st.columns(2)
+    
+    for i, pat in enumerate(avail_patterns):
+        # We checkbox them. Default to False to avoid noise, or check first few?
+        # User asked to "add these new attacks as checkboxes"
+        with (p_col1 if i % 2 == 0 else p_col2):
+            pattern_selections[pat] = st.checkbox(pat, value=False)
+    
+    # Existing hardcoded attacks (Legagy)
+    st.markdown("---")
     c4_1, c4_2 = st.columns([3, 1])
     with c4_1:
         atk_scan = st.checkbox("Port Scanning", value=True)
         atk_ssh = st.checkbox("SSH Brute Force", value=True)
         atk_dns = st.checkbox("DNS Tunneling", value=True)
-        atk_iot = st.checkbox("IoT Anomalies (Attack)", value=True)
-        atk_file = st.checkbox("File Upload Exploit", value=True)
     
     with c4_2:
-        n_scan = st.number_input("N", 0, 100, 5, label_visibility="collapsed", key="n1")
-        n_ssh = st.number_input("N", 0, 100, 3, label_visibility="collapsed", key="n2")
-        n_dns = st.number_input("N", 0, 100, 2, label_visibility="collapsed", key="n3")
-        n_iot = st.number_input("N", 0, 100, 3, label_visibility="collapsed", key="n4")
-        n_file = st.number_input("N", 0, 100, 2, label_visibility="collapsed", key="n5")
+        # Generic input for pattern count
+        n_pattern = st.number_input("N (Patterns)", 0, 100, 5, label_visibility="collapsed", key="n_pat")
+        
+        n_scan = st.number_input("N (Scan)", 0, 100, 5, label_visibility="collapsed", key="n1")
+        n_ssh = st.number_input("N (SSH)", 0, 100, 3, label_visibility="collapsed", key="n2")
+        n_dns = st.number_input("N (DNS)", 0, 100, 2, label_visibility="collapsed", key="n3")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -211,7 +247,7 @@ if gen_btn:
     with st.status("Generating Network Logs...", expanded=True) as status:
         # 1. Build Arguments
         # Baseline count is roughly the log volume minus attacks
-        total_attacks = (n_scan if atk_scan else 0) + (n_ssh if atk_ssh else 0) + (n_dns if atk_dns else 0) + (n_iot if atk_iot else 0) + (n_file if atk_file else 0)
+        total_attacks = (n_scan if atk_scan else 0) + (n_ssh if atk_ssh else 0) + (n_dns if atk_dns else 0)
         baseline_count = max(0, log_volume - total_attacks)
         
         # Collect Categories
@@ -225,19 +261,43 @@ if gen_btn:
         import os
         python_exec = "./venv/bin/python" if os.path.exists("./venv/bin/python") else "python"
         
+        # DOMAIN HANDLING
+        # Map user friendly name to backend key
+        dom_map = {
+            "Network Traffic": "Network",
+            "Authentication": "Authentication",
+            "Endpoint / Process": "Endpoint",
+            "Application (Web/API)": "Web",
+            "Asset / Inventory": "Asset",
+            "Security Alert": "Alert",
+            "DNS Log": "DNS",
+            "Cloud / Infra": "Cloud"
+        }
+        selected_dom_key = dom_map[domain_sel]
+        
         cmd = [
             python_exec, "traffic_generator.py",
             "--baseline", str(baseline_count),
+            "--domain", selected_dom_key
         ]
         
-        if atk_ssh:
-            cmd.extend(["--ssh", str(n_ssh)])
-        if atk_dns:
-            cmd.extend(["--dns", str(n_dns)])
-        # Mapping other UI attacks to backend capability (simulating for now as backend has limited flags)
-        # Port Scanning & Beamconing can map to 'beacon' or be simulated as baseline variants
-        if atk_iot or atk_scan:
-             cmd.extend(["--beacon", str(n_iot + n_scan)])
+        # PATTERNS (New)
+        selected_patterns = [p for p, selected in pattern_selections.items() if selected]
+        if selected_patterns:
+            # We pass a comma-separated string of patterns
+            cmd.extend(["--patterns", ",".join(selected_patterns)])
+            # Also pass the N per pattern
+            cmd.extend(["--pattern_count", str(n_pattern)])
+
+        # Only add attacks if domain is Network (default) or compatible
+        if selected_dom_key == "Network" or True: # Allow attacks on any domain now
+            if atk_ssh:
+                cmd.extend(["--ssh", str(n_ssh)])
+            if atk_dns:
+                cmd.extend(["--dns", str(n_dns)])
+            # Legacy mapping
+            if atk_scan:
+                 cmd.extend(["--beacon", str(n_scan)])
              
         cmd.extend(cat_args)
         
@@ -265,20 +325,17 @@ if gen_btn:
 
 # --- 5.1 CLEAR LOGS LOGIC ---
 if clear_btn:
-    conn = get_db_connection()
     try:
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM alerts")
-        cursor.execute("DELETE FROM logs")
-        conn.commit()
+        with engine.connect() as conn:
+            conn.execute(text("DELETE FROM alerts"))
+            conn.execute(text("DELETE FROM logs"))
+            conn.commit()
         st.toast("Access Logs Cleared Successfully")
         time.sleep(1)
         st.cache_data.clear()
         st.rerun()
     except Exception as e:
         st.error(f"Error clearing logs: {e}")
-    finally:
-        conn.close()
 
 # --- 5.2 DIALOG FOR DETAILS ---
 @st.dialog("Log Details", width="small")
@@ -309,12 +366,27 @@ def show_log_details_dialog(log_record):
 @st.cache_data(ttl=5)
 def get_data():
     conn = get_db_connection()
+    conn = get_db_connection()
     try:
         # Fetch detailed logs
+        print("DEBUG: Fetching data from DB...")
         df = pd.read_sql("SELECT * FROM logs ORDER BY timestamp DESC LIMIT 1000", conn)
+        print(f"DEBUG: Data fetched. Shape: {df.shape}")
+        if not df.empty:
+            print(f"DEBUG: Columns: {df.columns.tolist()}")
+            print(f"DEBUG: First row: {df.iloc[0].to_dict()}")
+        else:
+            print("DEBUG: Dataframe is empty.")
+        
+        # Ensure timestamp is datetime
+        if not df.empty and 'timestamp' in df.columns:
+            df['timestamp'] = pd.to_datetime(df['timestamp'])
+            
         return df
-    finally:
-        conn.close()
+    except Exception as e:
+        print(f"DEBUG: Error fetching data: {e}")
+        st.error(f"Error fetching data: {e}")
+        return pd.DataFrame()
 
 df_logs = get_data()
 
@@ -382,12 +454,32 @@ if not df_logs.empty:
                 st.session_state.page_number += 1
                 st.rerun()
 
-    start_idx = (st.session_state.page_number - 1) * page_size
-    end_idx = start_idx + page_size
-    page_df = display_df.iloc[start_idx:end_idx]
+    # Create the dataframe for the current page
+    page_start = (st.session_state.page_number - 1) * page_size
+    page_end = page_start + page_size
+    page_df = display_df.iloc[page_start:page_end]
 
     # Select columns for display
-    view_cols = ['timestamp', 'src_ip', 'dst_ip', 'Device Type', 'Attack Type', 'action']
+    # DYNAMIC COLUMN VISIBILITY: Show columns that have at least one non-null value (ignoring 'id', 'raw_log', etc if wanted)
+    # But usually we want specific columns first.
+    
+    # 1. Base Columns (always first)
+    base_cols = ['timestamp', 'log_type', 'src_ip', 'user']
+    
+    # 2. Get all other columns that are not null in this page (or whole set?)
+    # Optimization: Check current page for non-nulls
+    non_null_cols = page_df.columns[page_df.notna().any()].tolist()
+    
+    # 3. Filter out internals
+    exclude = ['id', 'raw_log', 'created_at', 'logid', 'qname', 'msg', 'srccountry', 'dstcountry'] + base_cols
+    dynamic_cols = [c for c in non_null_cols if c not in exclude]
+    
+    # 4. Final View List
+    view_cols = base_cols + dynamic_cols
+    
+    # Ensure they confirm to df
+    view_cols = [c for c in view_cols if c in page_df.columns]
+
     styled_df = page_df[view_cols].style.apply(highlight_attacks, axis=1)
 
     # 7.5 Interactive Table

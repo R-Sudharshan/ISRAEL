@@ -1,0 +1,19 @@
+title: Missing HSTS Security Header Detection
+id: a1-hsts-missing
+description: Detects HTTPS responses missing Strict-Transport-Security header (Risk: SSL Strip, Session Hijack)
+status: experimental
+logsource:
+  category: webserver
+  product: apache
+detection:
+  selection:
+    http.response.status: 200|301|302
+    http.request.scheme: https
+  filter_missing:
+    http.response.header.strict-transport-security|contains: ""
+  condition: selection AND NOT filter_missing
+level: high
+tags:
+  - web
+  - security-header
+  - hsts

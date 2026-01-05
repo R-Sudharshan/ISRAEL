@@ -1,0 +1,27 @@
+rule:
+  id: SQLI-TIME-004
+  name: Time-Based Blind SQL Injection
+  description: Detects SQL delay functions used for inference attacks
+  severity: high
+
+  logsource:
+    category: application
+    product: web_app
+
+  detection:
+    selection:
+      request_uri|contains:
+        - "SLEEP("
+        - "WAITFOR DELAY"
+        - "pg_sleep"
+    condition:
+      response_time > 4s
+
+  fields:
+    - src_ip
+    - request_uri
+    - response_time
+
+  alert:
+    message: "Time-based blind SQL Injection detected"
+    action: "Block source IP and investigate database queries"

@@ -1,0 +1,24 @@
+title: HTTP Response Splitting - Classic Header Injection
+id: hrs-rs-001
+status: test
+description: Detects HTTP Response Splitting attempts where CRLF injection breaks a single response into multiple responses via header injection.
+references:
+  - https://owasp.org/www-community/attacks/HTTP_Response_Splitting
+  - https://portswigger.net/web-security/response-smuggling
+author: SOC Detection Engineering
+date: 2026-01-05
+tags:
+  - attack.initial-access
+  - protocol.manipulation
+  - detection.emerging-threats
+logsource:
+  category: webserver
+detection:
+  selection:
+    http.response.body|contains: "HTTP/1.1"
+  anomaly:
+    http.response.body|re: "(HTTP/1.1[^\r\n]*\r\n.*HTTP/1.1)"
+  condition: selection and anomaly
+falsepositives:
+  - Debug traffic replay
+level: high

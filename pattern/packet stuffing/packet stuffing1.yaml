@@ -1,0 +1,20 @@
+Packet Stuffing1
+
+title: Packet Stuffing via TCP SYN Flood
+id: packet-stuffing-tcp-syn-001
+status: stable
+description: Detects excessive TCP SYN packets without session completion
+author: SOC Team
+date: 2026-01-06
+logsource:
+  category: network
+  product: firewall
+detection:
+  selection:
+    tcp_flags: SYN
+  condition:
+    selection | count(source_ip) > 100 within 10s
+level: critical
+tags:
+  - attack.availability
+  - attack.t1499

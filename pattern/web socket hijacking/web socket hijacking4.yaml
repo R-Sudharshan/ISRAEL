@@ -1,0 +1,23 @@
+version: "1.0"
+rule_set: "websocket_abuse_detection"
+
+rule:
+  id: WS-004
+  name: Unauthorized WebSocket Message Flow
+  severity: high
+  confidence: medium
+  description: >
+    Detects WebSocket message streams originating from connections that
+    were established without successful authentication.
+  conditions:
+    all:
+      - websocket.connection.authenticated == false
+      - websocket.messages.sent > 0
+  evidence_fields:
+    - websocket.connection.id
+    - websocket.messages.sent
+  risk_reason: >
+    Message exchange without authentication indicates authorization
+    enforcement failure.
+  references:
+    - OWASP API Security Top 10: API5

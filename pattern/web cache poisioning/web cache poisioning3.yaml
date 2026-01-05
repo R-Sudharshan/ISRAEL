@@ -1,0 +1,23 @@
+version: "1.0"
+rule_set: "web_cache_poisoning_detection"
+
+rule:
+  id: WCP-003
+  name: HTTP Parameter Pollution Cache Poisoning
+  severity: medium
+  confidence: medium
+  description: >
+    Detects requests containing duplicate query parameters that may be
+    interpreted differently by the cache and the backend.
+  conditions:
+    all:
+      - request.query.parameters.count > request.query.parameters.unique_count
+      - cache.response.cached == true
+  evidence_fields:
+    - request.query.parameters
+    - cache.response.cached
+  risk_reason: >
+    Parameter parsing ambiguity can result in poisoned cached responses.
+  references:
+    - OWASP HTTP Parameter Pollution
+    - RFC 3986

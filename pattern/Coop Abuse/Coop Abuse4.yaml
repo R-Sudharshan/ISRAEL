@@ -1,0 +1,23 @@
+version: "1.0"
+rule_set: "coop_abuse_detection"
+
+rule:
+  id: COOP-004
+  name: Inconsistent COOP Across Navigations
+  severity: low
+  confidence: medium
+  description: >
+    Detects changes in COOP policy between navigations for the same origin,
+    which may indicate misconfiguration or policy downgrade.
+  conditions:
+    all:
+      - response.headers.cross-origin-opener-policy exists
+      - historical.response.headers.cross-origin-opener-policy != response.headers.cross-origin-opener-policy
+  evidence_fields:
+    - historical.response.headers.cross-origin-opener-policy
+    - response.headers.cross-origin-opener-policy
+    - request.url
+  risk_reason: >
+    Inconsistent COOP policies can weaken isolation guarantees.
+  references:
+    - MDN Web Docs: COOP

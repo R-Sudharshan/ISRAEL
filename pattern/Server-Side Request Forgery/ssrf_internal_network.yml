@@ -1,0 +1,27 @@
+title: SSRF - Internal Network Access Attempt
+id: ssrf-001
+status: test
+description: Detects SSRF where the application server attempts to access internal/private network services due to user-supplied input.
+references:
+  - https://owasp.org/www-community/attacks/Server_Side_Request_Forgery
+author: SOC Detection Engineering
+date: 2026-01-05
+tags:
+  - attack.initial-access
+  - ssrf
+  - internal-access
+logsource:
+  category: webserver
+detection:
+  selection:
+    cs-method|contains:
+      - "GET"
+      - "POST"
+    network.request|contains:
+      - "10."
+      - "192.168."
+      - "172.16."
+  condition: selection
+falsepositives:
+  - Legit internal API integrations
+level: high

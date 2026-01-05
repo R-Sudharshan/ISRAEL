@@ -1,0 +1,29 @@
+title: HTTP Request Smuggling - HTTP2 to HTTP1 Desynchronization
+id: hrs-h2h1-005
+status: test
+description: Detects HTTP request smuggling due to HTTP/2 to HTTP/1.1 downgrade parsing inconsistencies.
+references:
+  - https://portswigger.net/research/http2
+  - https://www.cloudflare.com/learning/ddos/glossary/http-desync/
+author: SOC Detection Engineering
+date: 2026-01-05
+tags:
+  - attack.initial-access
+  - detection.http2
+  - protocol-downgrade
+logsource:
+  category: webserver
+detection:
+  selection:
+    network.protocol: "http"
+    http.version: "2"
+    backend.http.version: "1.1"
+  anomaly:
+    http.anomaly|contains:
+      - "invalid frame length"
+      - "stream desync"
+      - "partial pipeline request"
+  condition: selection or anomaly
+falsepositives:
+  - HTTP/2 experimental features
+level: critical

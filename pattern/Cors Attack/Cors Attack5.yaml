@@ -1,0 +1,25 @@
+version: "1.0"
+rule_set: "cors_misconfiguration_detection"
+
+rule:
+  id: CORS-005
+  name: Over-Permissive Preflight Authorization
+  severity: medium
+  confidence: medium
+  description: >
+    Detects preflight (OPTIONS) responses that allow sensitive HTTP methods
+    from cross-origin requests.
+  conditions:
+    all:
+      - request.method == "OPTIONS"
+      - response.headers.access-control-allow-origin exists
+      - response.headers.access-control-allow-methods matches regex ".*(PUT|DELETE|PATCH).*"
+  evidence_fields:
+    - request.method
+    - request.headers.origin
+    - response.headers.access-control-allow-methods
+  risk_reason: >
+    Preflight responses permit state-changing methods across origins.
+  references:
+    - OWASP API Security Top 10
+    - CWE-942

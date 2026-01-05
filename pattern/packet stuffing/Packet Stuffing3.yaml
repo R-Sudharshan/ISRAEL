@@ -1,0 +1,21 @@
+Packet Stuffing3
+
+title: Packet Stuffing via ICMP Echo Flood
+id: packet-stuffing-icmp-003
+status: stable
+description: Detects excessive ICMP echo requests from a single source
+author: SOC Team
+date: 2026-01-06
+logsource:
+  category: network
+  product: ids
+detection:
+  selection:
+    protocol: ICMP
+    icmp_type: 8
+  condition:
+    selection | count(source_ip) > 200 within 15s
+level: high
+tags:
+  - attack.availability
+  - attack.t1499

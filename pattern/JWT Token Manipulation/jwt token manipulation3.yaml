@@ -1,0 +1,23 @@
+version: "1.0"
+rule_set: "jwt_abuse_detection"
+
+rule:
+  id: JWT-003
+  name: Expired JWT Token Accepted
+  severity: high
+  confidence: high
+  description: >
+    Detects API requests authenticated using JWT tokens that are already
+    expired according to their 'exp' claim.
+  conditions:
+    all:
+      - auth.jwt.claims.exp < current_time
+      - auth.jwt.validated == true
+  evidence_fields:
+    - auth.jwt.claims.exp
+    - current_time
+    - request.endpoint
+  risk_reason: >
+    Accepting expired tokens bypasses session expiration controls.
+  references:
+    - OWASP API Security Top 10: API2 – Broken Authentication

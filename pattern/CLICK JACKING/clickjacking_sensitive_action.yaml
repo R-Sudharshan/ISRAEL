@@ -1,0 +1,28 @@
+rule:
+  id: CJ-SENSITIVE-003
+  name: Sensitive Action Clickjacking
+  description: Detects sensitive actions executed via iframe context
+  severity: critical
+
+  logsource:
+    category: application
+    product: web_app
+
+  detection:
+    selection:
+      request_uri|contains:
+        - "transfer"
+        - "delete"
+        - "disable"
+        - "update"
+      iframe_context: true
+    condition: selection
+
+  fields:
+    - src_ip
+    - request_uri
+    - iframe_context
+
+  alert:
+    message: "Sensitive action triggered via clickjacking"
+    action: "Block iframe access and enforce CSRF + confirmation"

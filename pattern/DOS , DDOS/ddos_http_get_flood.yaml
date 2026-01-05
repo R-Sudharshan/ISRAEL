@@ -1,0 +1,26 @@
+rule:
+  id: DDOS-HTTP-GET-FLOOD-003
+  name: HTTP GET Flood Detection
+  description: Detects excessive valid HTTP GET requests targeting application endpoints
+  severity: high
+
+  logsource:
+    category: web_server
+    product: apache
+
+  detection:
+    selection:
+      http_method: GET
+      http_status: 200
+    condition:
+      count(selection by src_ip) > 300 within 10s
+
+  fields:
+    - src_ip
+    - uri
+    - user_agent
+    - http_method
+
+  alert:
+    message: "HTTP GET Flood attack detected"
+    action: "Enable WAF rate limiting and bot protection"

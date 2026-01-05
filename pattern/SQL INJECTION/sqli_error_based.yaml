@@ -1,0 +1,28 @@
+rule:
+  id: SQLI-ERROR-001
+  name: Error-Based SQL Injection
+  description: Detects SQL syntax and database error leakage caused by malformed SQL input
+  severity: high
+
+  logsource:
+    category: application
+    product: web_app
+
+  detection:
+    selection:
+      message|contains:
+        - "SQL syntax"
+        - "mysql_fetch"
+        - "ORA-"
+        - "Unclosed quotation mark"
+        - "You have an error in your SQL"
+    condition: selection
+
+  fields:
+    - src_ip
+    - request_uri
+    - message
+
+  alert:
+    message: "Error-based SQL Injection attempt detected"
+    action: "Disable verbose DB errors and sanitize inputs"

@@ -1,0 +1,25 @@
+rule:
+  id: DDOS-ICMP-FLOOD-005
+  name: ICMP Flood Detection
+  description: Detects excessive ICMP echo requests causing network congestion
+  severity: medium
+
+  logsource:
+    category: network_traffic
+    product: ids
+
+  detection:
+    selection:
+      protocol: ICMP
+      icmp_type: echo-request
+    condition:
+      count(selection) > 1000 within 5s
+
+  fields:
+    - src_ip
+    - dst_ip
+    - icmp_type
+
+  alert:
+    message: "ICMP Flood attack detected"
+    action: "Rate-limit or block ICMP traffic"

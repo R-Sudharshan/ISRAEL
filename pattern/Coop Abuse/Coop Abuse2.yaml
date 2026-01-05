@@ -1,0 +1,21 @@
+version: "1.0"
+rule_set: "coop_abuse_detection"
+
+rule:
+  id: COOP-002
+  name: Unsafe COOP Value same-origin-allow-popups
+  severity: medium
+  confidence: medium
+  description: >
+    Detects usage of the 'same-origin-allow-popups' COOP value, which weakens
+    browsing context isolation.
+  conditions:
+    all:
+      - response.headers.cross-origin-opener-policy == "same-origin-allow-popups"
+  evidence_fields:
+    - response.headers.cross-origin-opener-policy
+    - request.url
+  risk_reason: >
+    This COOP setting allows popups to retain opener access.
+  references:
+    - MDN Web Docs: Cross-Origin-Opener-Policy

@@ -1,0 +1,23 @@
+Insecure Firmware1
+
+title: IoT Insecure Firmware Download Over HTTP
+id: iot-firmware-insecure-http-001
+status: stable
+description: Detects IoT devices downloading firmware over unencrypted HTTP
+author: SOC Team
+date: 2026-01-05
+logsource:
+  category: network
+  product: firewall
+detection:
+  selection:
+    destination_port: 80
+    url:
+      - "*.bin"
+      - "*.img"
+      - "*firmware*"s
+  condition: selection
+level: high
+tags:
+  - attack.persistence
+  - attack.t1542

@@ -1,0 +1,26 @@
+rule:
+  id: CSRF-API-004
+  name: API-Based CSRF Detection
+  description: Detects cross-origin JSON requests using cookies
+  severity: critical
+
+  logsource:
+    category: api
+    product: web_app
+
+  detection:
+    selection:
+      http_method: POST
+      content_type: "application/json"
+      cookie|contains: "session="
+      origin not contains trusted_domain
+    condition: selection
+
+  fields:
+    - src_ip
+    - request_uri
+    - origin
+
+  alert:
+    message: "API-based CSRF detected"
+    action: "Validate Origin header and disable cookie-based auth for APIs"

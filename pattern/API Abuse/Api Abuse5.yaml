@@ -1,0 +1,22 @@
+version: "1.0"
+rule_set: "api_abuse_detection"
+
+rule:
+  id: API-005
+  name: API Business Logic Abuse
+  severity: medium
+  confidence: medium
+  description: >
+    Detects abnormal sequences of API calls that violate expected business
+    workflows.
+  conditions:
+    all:
+      - request.sequence deviates_from expected_flow
+      - request.authenticated == true
+  evidence_fields:
+    - request.sequence
+    - client.identifier
+  risk_reason: >
+    Abnormal API call sequences may indicate abuse of business logic.
+  references:
+    - OWASP API Security Top 10: API5 – Broken Function Level Authorization

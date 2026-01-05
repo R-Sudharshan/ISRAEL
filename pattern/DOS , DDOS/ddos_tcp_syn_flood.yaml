@@ -1,0 +1,27 @@
+rule:
+  id: DDOS-TCP-SYN-FLOOD-001
+  name: TCP SYN Flood Detection
+  description: Detects excessive TCP SYN packets without handshake completion
+  severity: high
+
+  logsource:
+    category: network_traffic
+    product: firewall
+
+  detection:
+    selection:
+      protocol: TCP
+      tcp_flags: SYN
+    condition:
+      count(selection) > 1000 within 10s
+      and not tcp_flags contains ACK
+
+  fields:
+    - src_ip
+    - dst_ip
+    - dst_port
+    - tcp_flags
+
+  alert:
+    message: "TCP SYN Flood attack detected"
+    action: "Enable SYN cookies or rate-limit TCP connections"

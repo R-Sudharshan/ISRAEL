@@ -1,0 +1,24 @@
+title: HTTP Response Splitting - Redirect Injection
+id: hrs-rs-003
+status: test
+description: Detects HTTP Response Splitting attacks where a second injected response contains malicious redirect headers.
+references:
+  - https://portswigger.net/web-security/response-smuggling/exploiting/redirects
+  - https://owasp.org/www-community/attacks/HTTP_Response_Splitting
+author: SOC Detection Engineering
+date: 2026-01-05
+tags:
+  - attack.initial-access
+  - phishing-delivery
+  - web
+logsource:
+  category: webserver
+detection:
+  selection:
+    http.response.body|contains: "HTTP/1.1 302"
+  malicious:
+    http.response.body|re: "(Location: http.*)"
+  condition: selection and malicious
+falsepositives:
+  - Custom redirect frameworks
+level: high

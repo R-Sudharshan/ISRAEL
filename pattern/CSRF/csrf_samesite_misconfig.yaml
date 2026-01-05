@@ -1,0 +1,25 @@
+rule:
+  id: CSRF-SAMESITE-005
+  name: SameSite Cookie CSRF Detection
+  description: Detects cross-site authenticated requests due to SameSite misconfiguration
+  severity: medium
+
+  logsource:
+    category: web_server
+    product: web_app
+
+  detection:
+    selection:
+      cookie|contains: "SameSite=None"
+      referer not contains trusted_domain
+    condition: selection
+
+  fields:
+    - src_ip
+    - request_uri
+    - cookie
+    - referer
+
+  alert:
+    message: "CSRF risk due to SameSite cookie misconfiguration"
+    action: "Set SameSite=Strict or Lax"

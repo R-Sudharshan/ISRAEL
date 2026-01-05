@@ -1,0 +1,20 @@
+DEVICE SPOOFING5
+
+title: Device Spoofing via Certificate Reuse
+id: device-spoofing-cert-005
+status: stable
+description: Detects same device certificate used from multiple endpoints
+author: SOC Team
+date: 2026-01-06
+logsource:
+  category: authentication
+  product: pki
+detection:
+  selection:
+    auth_result: success
+  condition:
+    selection | count(source_ip) > 1 within 10m
+level: critical
+tags:
+  - attack.credential_access
+  - attack.t1649

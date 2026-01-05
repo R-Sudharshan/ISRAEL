@@ -1,0 +1,26 @@
+rule:
+  id: CJ-CURSOR-002
+  name: Cursorjacking Detection
+  description: Detects iframe usage with cursor manipulation indicators
+  severity: medium
+
+  logsource:
+    category: web_security
+    product: waf
+
+  detection:
+    selection:
+      iframe_detected: true
+      css|contains:
+        - "cursor:none"
+        - "pointer-events"
+    condition: selection
+
+  fields:
+    - src_ip
+    - request_uri
+    - css
+
+  alert:
+    message: "Possible cursorjacking detected"
+    action: "Block iframe embedding and review UI manipulation"

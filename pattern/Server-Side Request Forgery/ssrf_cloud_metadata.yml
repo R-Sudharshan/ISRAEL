@@ -1,0 +1,25 @@
+title: SSRF - Cloud Metadata Service Access Attempt
+id: ssrf-002
+status: test
+description: Detects SSRF attacks attempting access to cloud metadata services such as AWS, Azure, and GCP instance metadata endpoints.
+references:
+  - https://owasp.org/www-community/attacks/Server_Side_Request_Forgery
+  - https://cloud.google.com/compute/docs/metadata
+author: SOC Detection Engineering
+date: 2026-01-05
+tags:
+  - attack.initial-access
+  - credential-access
+  - cloud
+logsource:
+  category: webserver
+detection:
+  selection:
+    network.request|contains:
+      - "169.254.169.254"
+      - "metadata.google.internal"
+      - "metadata.azure.internal"
+  condition: selection
+falsepositives:
+  - Legitimate cloud agent activity
+level: critical

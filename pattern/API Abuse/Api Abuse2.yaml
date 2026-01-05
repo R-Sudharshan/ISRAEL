@@ -1,0 +1,25 @@
+version: "1.0"
+rule_set: "api_abuse_detection"
+
+rule:
+  id: API-002
+  name: Authentication Abuse via Repeated Failures
+  severity: high
+  confidence: high
+  description: >
+    Detects repeated failed authentication attempts targeting API login
+    endpoints, which may indicate brute-force or credential stuffing attacks.
+  conditions:
+    all:
+      - request.endpoint in authentication_endpoints
+      - response.status_code in [401, 403]
+      - request.failure.count > defined_threshold
+  evidence_fields:
+    - client.ip
+    - request.failure.count
+    - request.endpoint
+  risk_reason: >
+    Repeated authentication failures indicate attempts to compromise
+    user accounts or access tokens.
+  references:
+    - OWASP API Security Top 10: API7 – Security Misconfiguration

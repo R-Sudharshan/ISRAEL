@@ -1,0 +1,27 @@
+title: XML External Entity - XInclude Based Injection
+id: xxe-005
+status: test
+description: Detects XXE-style exploitation via XInclude processing, where external content inclusion occurs without DOCTYPE usage.
+references:
+  - https://owasp.org/www-community/vulnerabilities/XML_External_Entity_(XXE)_Processing
+author: SOC Detection Engineering
+date: 2026-01-05
+tags:
+  - attack.initial-access
+  - data-exposure
+  - xinclude
+logsource:
+  category: webserver
+detection:
+  selection:
+    http.request.body|contains:
+      - "xi:include"
+      - "xmlns:xi"
+  anomaly:
+    http.response.body|contains:
+      - "root:x:"
+      - "[Configuration]"
+  condition: selection and anomaly
+falsepositives:
+  - Legitimate XInclude API frameworks
+level: high

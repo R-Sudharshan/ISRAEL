@@ -1,0 +1,23 @@
+version: "1.0"
+rule_set: "api_abuse_detection"
+
+rule:
+  id: API-004
+  name: API Parameter Tampering
+  severity: medium
+  confidence: medium
+  description: >
+    Detects API requests containing unexpected or out-of-range parameter
+    values compared to typical usage patterns.
+  conditions:
+    all:
+      - request.parameters.value outside allowed_range
+      - request.endpoint in monitored_endpoints
+  evidence_fields:
+    - request.parameters
+    - request.endpoint
+  risk_reason: >
+    Parameter tampering may be used to bypass authorization or extract
+    unintended data.
+  references:
+    - OWASP API Security Top 10: API6 – Mass Assignment

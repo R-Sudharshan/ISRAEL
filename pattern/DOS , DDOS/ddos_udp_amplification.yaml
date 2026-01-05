@@ -1,0 +1,26 @@
+rule:
+  id: DDOS-UDP-AMPLIFICATION-002
+  name: UDP Amplification Attack Detection
+  description: Detects high-volume amplified UDP responses without outbound requests
+  severity: critical
+
+  logsource:
+    category: network_traffic
+    product: router
+
+  detection:
+    selection:
+      protocol: UDP
+      packet_size: ">4000"
+    condition:
+      count(selection) > 500 within 5s
+      and outbound_udp_requests == 0
+
+  fields:
+    - src_ip
+    - dst_ip
+    - packet_size
+
+  alert:
+    message: "UDP amplification DDoS detected"
+    action: "Apply ingress filtering and block reflection vectors"

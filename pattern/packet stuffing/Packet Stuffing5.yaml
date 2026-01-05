@@ -1,0 +1,22 @@
+Packet Stuffing5
+
+title: Packet Stuffing via HTTP Request Flood
+id: packet-stuffing-http-005
+status: stable
+description: Detects excessive HTTP requests intended to overwhelm application layer
+author: SOC Team
+date: 2026-01-06
+logsource:
+  category: web
+  product: nginx
+detection:
+  selection:
+    http_method:
+      - GET
+      - POST
+  condition:
+    selection | count(url) > 300 within 1m
+level: critical
+tags:
+  - attack.impact
+  - attack.t1499

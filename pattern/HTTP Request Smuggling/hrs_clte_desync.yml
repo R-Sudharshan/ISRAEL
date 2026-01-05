@@ -1,0 +1,28 @@
+title: HTTP Request Smuggling - CL.TE Desynchronization
+id: hrs-clte-001
+status: test
+description: Detects HTTP request smuggling attempts caused when proxy trusts Content-Length and backend trusts Transfer-Encoding.
+references:
+  - https://portswigger.net/web-security/request-smuggling
+  - https://owasp.org/www-community/attacks/HTTP_Request_Smuggling
+author: SOC Detection Engineering
+date: 2026-01-05
+tags:
+  - attack.t1190
+  - attack.initial-access
+  - detection.http-desync
+logsource:
+  category: webserver
+detection:
+  selection:
+    cs-method|contains:
+      - "POST"
+      - "PUT"
+    http.request.headers:
+      - "*Content-Length*"
+      - "*Transfer-Encoding*"
+  condition: selection
+falsepositives:
+  - Misconfigured proxies
+  - Non-RFC compliant applications
+level: high

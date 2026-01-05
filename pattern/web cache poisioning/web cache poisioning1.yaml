@@ -1,0 +1,27 @@
+version: "1.0"
+rule_set: "web_cache_poisoning_detection"
+
+rule:
+  id: WCP-001
+  name: Host Header Cache Poisoning
+  severity: high
+  confidence: high
+  description: >
+    Detects potential cache poisoning caused by unvalidated Host headers
+    influencing cached responses.
+  conditions:
+    all:
+      - request.headers.host exists
+      - response.headers.vary exists
+      - request.headers.host not in allowed_host_list
+      - cache.response.cached == true
+  evidence_fields:
+    - request.headers.host
+    - cache.response.cached
+  risk_reason: >
+    Responses generated using an untrusted Host header may be stored and
+    served to other users.
+  references:
+    - OWASP Web Cache Poisoning
+    - PortSwigger Research
+

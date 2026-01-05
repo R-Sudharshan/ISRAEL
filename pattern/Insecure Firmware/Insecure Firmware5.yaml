@@ -1,0 +1,21 @@
+Insecure Firmware5
+
+title: IoT Firmware Update Followed by C2 Beaconing
+id: iot-firmware-c2-correlation-005
+status: stable
+description: Detects command-and-control traffic shortly after firmware update
+author: SOC Team
+date: 2026-01-05
+logsource:
+  category: network
+  product: firewall
+detection:
+  selection:
+    outbound_connection: true
+  condition:
+    selection | count(destination_ip) > 5 within 10m
+level: critical
+tags:
+  - attack.command_and_control
+  - attack.persistence
+	

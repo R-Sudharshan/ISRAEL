@@ -1,0 +1,28 @@
+title: XML External Entity - Denial of Service Expansion Attack
+id: xxe-004
+status: test
+description: Detects XXE denial of service attacks leveraging entity expansion (Billion Laughs) to exhaust memory and CPU.
+references:
+  - https://owasp.org/www-community/attacks/XXE
+author: SOC Detection Engineering
+date: 2026-01-05
+tags:
+  - attack.availability
+  - denial-of-service
+  - detection.emerging-threats
+logsource:
+  category: webserver
+detection:
+  selection:
+    http.request.body|contains:
+      - "<!ENTITY"
+      - "SYSTEM"
+  anomaly:
+    system.logs|contains:
+      - "entity expansion limit exceeded"
+      - "parser memory exceeded"
+      - "OOM during XML parsing"
+  condition: selection and anomaly
+falsepositives:
+  - Extremely rare malformed XML test loads
+level: high

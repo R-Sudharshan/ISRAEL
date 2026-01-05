@@ -1,0 +1,21 @@
+title: HTTP Response Splitting - Stored Variant
+id: hrs-rs-004
+status: test
+description: Detects persistent HTTP Response Splitting where injected CRLF is stored and repeatedly triggers split responses.
+references:
+  - https://owasp.org/www-community/attacks/HTTP_Response_Splitting
+author: SOC Detection Engineering
+date: 2026-01-05
+tags:
+  - attack.initial-access
+  - persistence
+  - web
+logsource:
+  category: webserver
+detection:
+  selection:
+    http.response.body|re: "(HTTP/1.1.*HTTP/1.1)"
+  condition: selection
+falsepositives:
+  - Debug replay environments
+level: critical

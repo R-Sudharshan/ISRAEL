@@ -1,0 +1,28 @@
+rule:
+  id: CJ-MOBILE-005
+  name: Mobile Touch Clickjacking
+  description: Detects iframe-based clickjacking on mobile devices
+  severity: medium
+
+  logsource:
+    category: web_server
+    product: web_app
+
+  detection:
+    selection:
+      user_agent|contains:
+        - "Android"
+        - "iPhone"
+      iframe_detected: true
+      response_headers_missing:
+        - "X-Frame-Options"
+    condition: selection
+
+  fields:
+    - src_ip
+    - user_agent
+    - request_uri
+
+  alert:
+    message: "Mobile clickjacking detected"
+    action: "Add frame protections and test mobile UI"

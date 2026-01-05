@@ -1,0 +1,23 @@
+version: "1.0"
+rule_set: "jwt_abuse_detection"
+
+rule:
+  id: JWT-001
+  name: JWT None Algorithm Usage
+  severity: critical
+  confidence: high
+  description: >
+    Detects JWT tokens declaring the 'none' algorithm, which disables
+    signature verification and should never be accepted in production.
+  conditions:
+    all:
+      - auth.jwt.header.alg == "none"
+  evidence_fields:
+    - auth.jwt.header.alg
+    - request.endpoint
+    - client.ip
+  risk_reason: >
+    Tokens without cryptographic signatures can be trivially forged.
+  references:
+    - OWASP JWT Cheat Sheet
+    - RFC 7519

@@ -1,0 +1,24 @@
+version: "1.0"
+rule_set: "web_cache_poisoning_detection"
+
+rule:
+  id: WCP-005
+  name: Unkeyed Query Parameter Cache Poisoning
+  severity: medium
+  confidence: medium
+  description: >
+    Detects cached responses where certain query parameters are processed
+    by the backend but ignored by the cache key.
+  conditions:
+    all:
+      - request.query.parameters exists
+      - cache.key.query_parameters does_not_include request.query.suspect_parameter
+      - cache.response.cached == true
+  evidence_fields:
+    - request.url
+    - cache.key.query_parameters
+  risk_reason: >
+    Backend-only query parameters may influence cached responses.
+  references:
+    - PortSwigger Web Cache Poisoning
+    - OWASP Caching Security

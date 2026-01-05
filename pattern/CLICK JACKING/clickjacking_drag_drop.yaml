@@ -1,0 +1,26 @@
+rule:
+  id: CJ-DRAGDROP-004
+  name: Drag-and-Drop Clickjacking
+  description: Detects drag-and-drop actions executed inside iframes
+  severity: high
+
+  logsource:
+    category: browser_security
+    product: frontend
+
+  detection:
+    selection:
+      event_type:
+        - "dragstart"
+        - "drop"
+      iframe_detected: true
+    condition: selection
+
+  fields:
+    - src_ip
+    - event_type
+    - iframe_detected
+
+  alert:
+    message: "Drag-and-drop clickjacking detected"
+    action: "Disable drag/drop in iframe contexts"

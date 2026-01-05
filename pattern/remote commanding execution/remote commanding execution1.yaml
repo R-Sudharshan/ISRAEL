@@ -1,0 +1,23 @@
+remote commanding execution1
+
+title: RCE via Web Command Injection
+id: rce-web-command-injection-001
+status: stable
+description: Detects shell metacharacters in HTTP requests leading to command execution
+author: SOC Team
+date: 2026-01-06
+logsource:
+  category: web
+  product: apache
+detection:
+  selection:
+    uri_query:
+      - "*;*"
+      - "*&&*"
+      - "*|*"
+      - "*`*"
+  condition: selection
+level: critical
+tags:
+  - attack.execution
+  - attack.t1059

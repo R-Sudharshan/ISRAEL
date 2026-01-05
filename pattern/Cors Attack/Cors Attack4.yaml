@@ -1,0 +1,23 @@
+version: "1.0"
+rule_set: "cors_misconfiguration_detection"
+
+rule:
+  id: CORS-004
+  name: Null Origin Allowed
+  severity: high
+  confidence: high
+  description: >
+    Detects APIs that explicitly allow requests with a 'null' Origin, which
+    can originate from local files or sandboxed environments.
+  conditions:
+    all:
+      - request.headers.origin == "null"
+      - response.headers.access-control-allow-origin == "null"
+  evidence_fields:
+    - request.headers.origin
+    - response.headers.access-control-allow-origin
+  risk_reason: >
+    Null origins are opaque and cannot be securely validated.
+  references:
+    - OWASP CORS Security Cheat Sheet
+    - W3C CORS Specification

@@ -1,0 +1,27 @@
+rule:
+  id: SQLI-BOOLEAN-003
+  name: Boolean-Based Blind SQL Injection
+  description: Detects logical SQL conditions used to infer database behavior
+  severity: medium
+
+  logsource:
+    category: application
+    product: web_app
+
+  detection:
+    selection:
+      request_uri|contains:
+        - "AND 1=1"
+        - "AND 1=2"
+        - "OR 1=1"
+        - "OR 1=2"
+    condition:
+      count(selection by src_ip) > 20 within 60s
+
+  fields:
+    - src_ip
+    - request_uri
+
+  alert:
+    message: "Boolean-based blind SQL Injection detected"
+    action: "Apply WAF rules and parameterized queries"

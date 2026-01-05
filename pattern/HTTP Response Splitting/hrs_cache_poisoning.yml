@@ -1,0 +1,24 @@
+title: HTTP Response Splitting - Cache Poisoning Variant
+id: hrs-rs-002
+status: test
+description: Detects HTTP Response Splitting used to poison proxy or CDN cache by injecting crafted headers and secondary responses.
+references:
+  - https://portswigger.net/web-security/web-cache-poisoning/exploiting-http-response-splitting
+  - https://owasp.org/www-community/attacks/HTTP_Response_Splitting
+author: SOC Detection Engineering
+date: 2026-01-05
+tags:
+  - attack.initial-access
+  - cache-poisoning
+  - web
+logsource:
+  category: webserver
+detection:
+  selection:
+    http.response.headers|contains: "Cache-Control"
+  anomaly:
+    http.response.body|contains: "HTTP/1.1"
+  condition: selection and anomaly
+falsepositives:
+  - Misconfigured caching middleware
+level: critical

@@ -1,0 +1,28 @@
+title: HTTP Request Smuggling - TE.CL Desynchronization
+id: hrs-tecl-002
+status: test
+description: Detects HTTP request smuggling attempts caused when proxy trusts Transfer-Encoding and backend trusts Content-Length.
+references:
+  - https://portswigger.net/research/http-desync-attacks
+  - https://owasp.org/www-community/attacks/HTTP_Request_Smuggling
+author: SOC Detection Engineering
+date: 2026-01-05
+tags:
+  - attack.initial-access
+  - attack.t1190
+  - detection.http-smuggling
+logsource:
+  category: webserver
+detection:
+  selection:
+    cs-method|contains:
+      - "POST"
+      - "PUT"
+    http.request.headers|contains: "Transfer-Encoding"
+    http.request.headers|contains: "Content-Length"
+  anomaly:
+    http.anomaly|contains: "boundary"
+  condition: selection
+falsepositives:
+  - Non-standard middleware behavior
+level: high

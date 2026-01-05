@@ -1,0 +1,30 @@
+title: XML External Entity - In-Band File Disclosure
+id: xxe-001
+status: test
+description: Detects classic XML External Entity (XXE) attack where sensitive local files are read and returned in-band via XML parser.
+references:
+  - https://owasp.org/www-community/vulnerabilities/XML_External_Entity_(XXE)_Processing
+  - https://portswigger.net/web-security/xxe
+author: SOC Detection Engineering
+date: 2026-01-05
+tags:
+  - attack.initial-access
+  - data-exposure
+  - detection.emerging-threats
+logsource:
+  category: webserver
+detection:
+  selection:
+    cs-method|contains:
+      - "POST"
+      - "PUT"
+    http.request.body|contains: "<!DOCTYPE"
+  leak:
+    http.response.body|contains:
+      - "root:x:"
+      - "[fonts]"
+      - "[SECURITY]"
+  condition: selection and leak
+falsepositives:
+  - Legitimate XML debugging responses
+level: high

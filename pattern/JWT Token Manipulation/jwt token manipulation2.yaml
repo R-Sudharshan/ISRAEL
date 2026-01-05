@@ -1,0 +1,24 @@
+version: "1.0"
+rule_set: "jwt_abuse_detection"
+
+rule:
+  id: JWT-002
+  name: JWT Algorithm Confusion
+  severity: high
+  confidence: medium
+  description: >
+    Detects JWTs using an unexpected signing algorithm compared to the
+    application’s configured algorithm.
+  conditions:
+    all:
+      - auth.jwt.header.alg != expected_jwt_algorithm
+      - auth.jwt.validated == true
+  evidence_fields:
+    - auth.jwt.header.alg
+    - expected_jwt_algorithm
+    - request.endpoint
+  risk_reason: >
+    Algorithm mismatches may indicate key confusion or misconfiguration.
+  references:
+    - OWASP JWT Cheat Sheet
+    - CWE-347: Improper Verification of Cryptographic Signature

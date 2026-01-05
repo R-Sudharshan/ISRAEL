@@ -1,0 +1,25 @@
+version: "1.0"
+rule_set: "cors_misconfiguration_detection"
+
+rule:
+  id: CORS-002
+  name: Reflected Origin without Whitelist Validation
+  severity: high
+  confidence: medium
+  description: >
+    Detects scenarios where the Access-Control-Allow-Origin response header
+    exactly reflects the incoming Origin request header.
+  conditions:
+    all:
+      - request.headers.origin exists
+      - response.headers.access-control-allow-origin == request.headers.origin
+  exclusions:
+    - request.headers.origin in allowed_origin_whitelist
+  evidence_fields:
+    - request.headers.origin
+    - response.headers.access-control-allow-origin
+  risk_reason: >
+    The server appears to trust arbitrary origins supplied by the client.
+  references:
+    - CWE-942: Permissive Cross-domain Policy
+    - OWASP A05:2021

@@ -1,0 +1,23 @@
+version: "1.0"
+rule_set: "jwt_abuse_detection"
+
+rule:
+  id: JWT-005
+  name: Abnormal JWT Token Reuse
+  severity: medium
+  confidence: medium
+  description: >
+    Detects the same JWT token being used from multiple IP addresses or
+    devices within a short time window.
+  conditions:
+    all:
+      - auth.jwt.token_id reused_from_multiple_sources == true
+      - request.time_window < defined_threshold
+  evidence_fields:
+    - auth.jwt.token_id
+    - client.ip
+    - client.device
+  risk_reason: >
+    Token reuse across sources may indicate replay or credential sharing.
+  references:
+    - OWASP API Security Top 10: API2 – Broken Authentication

@@ -1,0 +1,22 @@
+remote commanding execution3
+
+title: RCE via Template Injection
+id: rce-template-injection-003
+status: stable
+description: Detects template expressions executing system commands
+author: SOC Team
+date: 2026-01-06
+logsource:
+  category: application
+  product: webapp
+detection:
+  selection:
+    log_message:
+      - "*os.popen*"
+      - "*Runtime.getRuntime*"
+      - "*__globals__*"
+  condition: selection
+level: critical
+tags:
+  - attack.execution
+  - attack.t1059

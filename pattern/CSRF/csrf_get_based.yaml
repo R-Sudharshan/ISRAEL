@@ -1,0 +1,28 @@
+rule:
+  id: CSRF-GET-002
+  name: GET-Based CSRF Detection
+  description: Detects state-changing GET requests with authenticated cookies
+  severity: medium
+
+  logsource:
+    category: web_server
+    product: web_app
+
+  detection:
+    selection:
+      http_method: GET
+      request_uri|contains:
+        - "delete"
+        - "update"
+        - "change"
+      cookie|contains: "session="
+    condition: selection
+
+  fields:
+    - src_ip
+    - request_uri
+    - referer
+
+  alert:
+    message: "GET-based CSRF detected"
+    action: "Disallow state changes via GET"

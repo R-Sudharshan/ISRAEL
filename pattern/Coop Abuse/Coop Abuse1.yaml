@@ -1,0 +1,23 @@
+version: "1.0"
+rule_set: "coop_abuse_detection"
+
+rule:
+  id: COOP-001
+  name: Missing Cross-Origin-Opener-Policy Header
+  severity: medium
+  confidence: high
+  description: >
+    Detects top-level HTML responses that do not include a
+    Cross-Origin-Opener-Policy header, potentially allowing cross-origin
+    window interaction.
+  conditions:
+    all:
+      - response.content_type contains "text/html"
+      - response.headers.cross-origin-opener-policy not exists
+  evidence_fields:
+    - response.headers.cross-origin-opener-policy
+    - request.url
+  risk_reason: >
+    Absence of COOP may allow opener-based cross-origin attacks.
+  references:
+    - MDN Web Docs: Cross-Origin-Opener-Policy

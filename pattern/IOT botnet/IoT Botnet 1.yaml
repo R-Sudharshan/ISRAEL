@@ -1,0 +1,31 @@
+IoT Botnet 1
+
+title: IoT Botnet SSH or Telnet Brute Force Activity
+id: 1c3c9a44-7f82-4a1e-9e2c-8b6c3f11a001
+status: test
+description: >
+  Detects IoT devices attempting repeated SSH or Telnet login failures
+  using common default credentials, indicative of Mirai-like botnet propagation.
+author: SOC-Team
+date: 2026-01-05
+tags:
+  - attack.initial-access
+  - attack.t1110
+  - attack.iot
+logsource:
+  category: network
+detection:
+  selection:
+    destination.port:
+      - 22
+      - 23
+    action: login_failed
+    user|contains:
+      - root
+      - admin
+      - support
+  condition: selection
+falsepositives:
+  - Misconfigured IoT devices
+  - Legitimate remote administration errors
+level: high

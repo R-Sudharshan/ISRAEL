@@ -1,0 +1,26 @@
+rule:
+  id: DOS-SLOWLORIS-004
+  name: Slowloris Attack Detection
+  description: Detects long-lived HTTP connections with incomplete headers
+  severity: high
+
+  logsource:
+    category: web_server
+    product: nginx
+
+  detection:
+    selection:
+      connection_state: open
+      request_completed: false
+    condition:
+      connection_duration > 120s
+      and count(selection by src_ip) > 50
+
+  fields:
+    - src_ip
+    - connection_duration
+    - request_completed
+
+  alert:
+    message: "Slowloris DoS attack detected"
+    action: "Reduce header timeout and limit concurrent connections"

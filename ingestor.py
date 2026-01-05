@@ -53,26 +53,26 @@ class LogIngestor:
             except:
                 timestamp = datetime.now()
 
-            return {
-                "timestamp": timestamp,
-                "src_ip": raw_log.get('srcip'),
-                "dst_ip": raw_log.get('dstip'),
-                "src_port": raw_log.get('srcport'),
-                "dst_port": raw_log.get('dstport'),
-                "protocol": raw_log.get('proto'),
-                "service": raw_log.get('service'),
-                "action": raw_log.get('action'),
-                "policyid": raw_log.get('policyid'),
-                "sentbyte": raw_log.get('sentbyte'),
-                "rcvdbyte": raw_log.get('rcvdbyte'),
-                "duration": raw_log.get('duration'),
-                "user": raw_log.get('user'),
-                "device_type": raw_log.get('device_type'),
-                "level": raw_log.get('level'),
-                "logid": raw_log.get('logid'),
-                "qname": raw_log.get('qname'),
-                "raw_log": json.dumps(raw_log)
-            }
+            # Start with raw_log to keep all fields (e.g. log_type, auth_result, process_name)
+            normalized = raw_log.copy()
+            
+            # Update with standardized fields if needed (converting srcip -> src_ip if standard name differs)
+            # But our generator already uses src_ip. 
+            # We just need to ensure timestamp is datetime object
+            
+            normalized['timestamp'] = timestamp
+            
+            # Map legacy keys if present (for real logs)
+            if 'srcip' in raw_log and 'src_ip' not in raw_log: normalized['src_ip'] = raw_log['srcip']
+            if 'dstip' in raw_log and 'dst_ip' not in raw_log: normalized['dst_ip'] = raw_log['dstip']
+            if 'srcport' in raw_log and 'src_port' not in raw_log: normalized['src_port'] = raw_log['srcport']
+            if 'dstport' in raw_log and 'dst_port' not in raw_log: normalized['dst_port'] = raw_log['dstport']
+            
+            # Ensure raw_log string is present
+            if 'raw_log' not in normalized or not isinstance(normalized['raw_log'], str):
+                 normalized['raw_log'] = json.dumps(raw_log, default=str)
+                 
+            return normalized
         except Exception as e:
             # print(f"Normalization failed for log: {e}") 
             return None

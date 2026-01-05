@@ -1,0 +1,24 @@
+version: "1.0"
+rule_set: "api_abuse_detection"
+
+rule:
+  id: API-003
+  name: Excessive Data Extraction via API
+  severity: high
+  confidence: medium
+  description: >
+    Detects unusually large volumes of data being retrieved through API
+    responses by a single client.
+  conditions:
+    all:
+      - response.payload.size > normal_baseline
+      - request.repetition.count > defined_threshold
+  evidence_fields:
+    - response.payload.size
+    - client.identifier
+    - request.endpoint
+  risk_reason: >
+    Large-scale data extraction may indicate scraping or authorization
+    weaknesses.
+  references:
+    - OWASP API Security Top 10: API1 – Broken Object Level Authorization

@@ -1,0 +1,25 @@
+rule:
+  id: CSRF-TOKEN-003
+  name: Missing CSRF Token Detection
+  description: Detects authenticated POST requests without CSRF tokens
+  severity: high
+
+  logsource:
+    category: application
+    product: web_app
+
+  detection:
+    selection:
+      http_method: POST
+      cookie|contains: "session="
+      csrf_token: null
+    condition: selection
+
+  fields:
+    - src_ip
+    - request_uri
+    - csrf_token
+
+  alert:
+    message: "CSRF attack detected due to missing token"
+    action: "Enforce CSRF token validation"

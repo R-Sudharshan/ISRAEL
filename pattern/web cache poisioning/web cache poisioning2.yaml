@@ -1,0 +1,25 @@
+version: "1.0"
+rule_set: "web_cache_poisoning_detection"
+
+rule:
+  id: WCP-002
+  name: Unkeyed Header Cache Poisoning
+  severity: high
+  confidence: medium
+  description: >
+    Detects responses where backend behavior is influenced by request
+    headers that are not included in the cache key.
+  conditions:
+    all:
+      - request.headers.x-forwarded-host exists
+      - cache.key.headers does_not_include "x-forwarded-host"
+      - cache.response.cached == true
+  evidence_fields:
+    - request.headers.x-forwarded-host
+    - cache.key.headers
+  risk_reason: >
+    Cache key and backend logic disagreement may allow attacker-influenced
+    content to be cached.
+  references:
+    - PortSwigger: Web Cache Poisoning
+    - RFC 7230

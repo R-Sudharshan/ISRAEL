@@ -1,0 +1,25 @@
+Insecure Firmware2
+
+title: IoT Firmware Download from Untrusted External Host
+id: iot-firmware-untrusted-source-002
+status: stable
+description: Detects firmware downloads from non-vendor external IPs
+author: SOC Team
+date: 2026-01-05
+logsource:
+  category: network
+  product: firewall
+detection:
+  selection:
+    destination_ip:
+      - "!10.0.0.0/8"
+      - "!172.16.0.0/12"
+      - "!192.168.0.0/16"
+    url:
+      - "*.bin"
+      - "*.img"
+  condition: selection
+level: high
+tags:
+  - attack.persistence
+  - attack.supply_chain

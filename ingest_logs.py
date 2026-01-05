@@ -3,6 +3,7 @@ import json
 from ingestor import LogIngestor
 from detection.engine import run_detection_pipeline, format_alert_object
 from api.db import get_db_connection
+import mysql.connector # Added for mysql.connector.Error
 
 def ingest_direct(file_path):
     print(f"[*] Starting ingestion for {file_path}")
@@ -20,29 +21,54 @@ def ingest_direct(file_path):
     alerts_generated = 0
 
     print(f"[*] Processing {len(normalized_logs)} logs...")
+    if normalized_logs:
+        print(f"DEBUG: First normalized log keys: {list(normalized_logs[0].keys())}")
+        print(f"DEBUG: First normalized log content: {normalized_logs[0]}")
+        
     for log in normalized_logs:
+        # Pre-process: Restore timestamp from timestamp_iso if needed
+        if 'timestamp' not in log and 'timestamp_iso' in log:
+            log['timestamp'] = log['timestamp_iso']
+
         try:
             # 1. Store Normalized Log
-            sql_log = """INSERT INTO logs 
-                (timestamp, src_ip, dst_ip, src_port, dst_port, service, device_type, protocol, action, policyid, sentbyte, rcvdbyte, user, raw_log) 
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+            # Updated to handle Super-Set of 8+ Domains
+            # Prepare SQL
+            # Dynamic Columns for generic insertion
+
+            allowed_cols = [
+                "timestamp", "src_ip", "dst_ip", "src_port", "dst_port", "protocol", "service", "action", 
+                "policyid", "sentbyte", "rcvdbyte", "duration", "user", "device_type", "level", "logid",
+                "qname", "raw_log", "msg", "src_country", "dst_country", "log_type", "host", "direction",
+                "auth_type", "auth_result", "failure_reason", "location", "process_name", "process_id",
+                "parent_process", "command_line", "file_path", "hash", "integrity_level", 
+                "http_method", "url", "status_code", "user_agent", "request_size", "response_size", "session_id",
+                "client_ip", "asset_id", "hostname", "mac_address", "os", "os_version", "role", "criticality", "last_seen",
+                "alert_name", "detection_engine", "action_taken", "confidence", "query", "query_type", "response", "rcode", 
+                "ttl", "resolver", "cloud_provider", "account_id", "api_call", "resource", "region", "result", "ip_address"
+            ]
             
-            cursor.execute(sql_log, (
-                log.get('timestamp'), 
-                log.get('src_ip'), 
-                log.get('dst_ip'),
-                log.get('srcport', 0),
-                log.get('dstport', 0),
-                log.get('service', 'N/A'),
-                log.get('device_type'), 
-                log.get('protocol'), 
-                log.get('action'),
-                log.get('policyid', 1),
-                log.get('sentbyte', 0),
-                log.get('rcvdbyte', 0),
-                log.get('user', 'N/A'),
-                log.get('raw_log')
-            ))
+            # Filter keys that exist in both log and allowed_cols
+            cols = [k for k in log.keys() if k in allowed_cols]
+            
+            if not cols:
+                print(f"DEBUG: Skipping log with no matching columns: {log}")
+                continue
+
+            placeholders = ", ".join(["%s"] * len(cols))
+            sql_log = f"INSERT INTO logs ({', '.join(cols)}) VALUES ({placeholders})"
+            
+            # Create values tuple in same order as cols
+            vals = []
+            for c in cols:
+                val = log.get(c)
+                # Ensure empty strings are None for Integers if necessary, or just rely on DB casting
+                vals.append(val)
+                
+            cursor.execute(sql_log, tuple(vals))
+            print(f"DEBUG: Executed INSERT for {log.get('log_type')}")
+            # print(f"DEBUG: SQL: {sql_log}")
+            # print(f"DEBUG: VALS: {vals}")
             log_id = cursor.lastrowid
 
             # 2. Detect Anomalies

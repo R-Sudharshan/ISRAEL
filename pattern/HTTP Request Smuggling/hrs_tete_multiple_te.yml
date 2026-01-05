@@ -1,0 +1,23 @@
+title: HTTP Request Smuggling - Multiple Transfer-Encoding Headers
+id: hrs-tete-003
+status: test
+description: Detects request smuggling attempts using conflicting or duplicated Transfer-Encoding headers.
+references:
+  - https://portswigger.net/web-security/request-smuggling
+  - https://datatracker.ietf.org/doc/html/rfc7230
+author: SOC Detection Engineering
+date: 2026-01-05
+tags:
+  - attack.initial-access
+  - detection.http-desync
+  - protocol-anomaly
+logsource:
+  category: webserver
+detection:
+  selection:
+    http.request.headers|contains: "Transfer-Encoding"
+    http.request.headers|re: "(?i)(Transfer-Encoding.*Transfer-Encoding)"
+  condition: selection
+falsepositives:
+  - Rare broken client implementations
+level: critical

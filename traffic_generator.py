@@ -2,12 +2,13 @@ import json
 import random
 import argparse
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import ipaddress
 from typing import List, Dict, Any
 
 from fortigate_formatter import FortiLogBuilder, LogWriter
 from attack_profiles import AttackSimulator
+from pattern_manager import PatternManager
 
 class TrafficGenerator:
     def __init__(self, config_path: str):
@@ -98,8 +99,8 @@ class TrafficGenerator:
                     "device_type": dev_type,
                     "level": "notice",
                     "logid": "0000000013",
-                    "srccountry": "Reserved",
-                    "dstcountry": "United States"
+                    "src_country": "Reserved",
+                    "dst_country": "United States"
                 }
                 logs.append(log)
                 
@@ -211,10 +212,102 @@ if __name__ == "__main__":
     parser.add_argument("--dns", type=int, default=0, help="Number of DNS attack logs to generate")
     parser.add_argument("--beacon", type=int, default=0, help="Number of Beacon logs to generate")
     parser.add_argument("--categories", nargs="+", help="List of device categories (e.g. Router Printer)")
+    parser.add_argument("--domain", type=str, help="Specific Log Style Domain (e.g., Auth, Endpoint)")
+    parser.add_argument("--patterns", type=str, help="Comma separated list of pattern names")
+    parser.add_argument("--pattern_count", type=int, default=5, help="Number of logs per pattern")
+    
     args = parser.parse_args()
     
     gen = TrafficGenerator(args.config)
-    
+
+    # PATTERN MODE / HYBRID
+    # If patterns are specified, we generate them and mix them in
+    pattern_logs = []
+    if args.patterns:
+        pm = PatternManager()
+        selected = args.patterns.split(',')
+        print(f"[-] Generating traffic for patterns: {selected}")
+        base_time = datetime.now() - timedelta(minutes=60)
+        for p in selected:
+            p_logs = pm.generate_logs(p.strip(), args.pattern_count, base_time)
+            # Convert to dict format expected by formatter? 
+            # PatternManager already returns dicts.
+            # We just need to ensure they have the keys FGT formatter expects or we skip formatter?
+            # PatternManager logs keys: timestamp, log_type, src_ip, ...
+            pattern_logs.extend(p_logs)
+            
+    # Domain Logic (New Request)
+    if args.domain:
+        from log_domains import DomainGenerator
+
+        dom_gen = DomainGenerator()
+        logs = []
+        count = args.baseline if args.baseline > 0 else 100 # Default to 100 if only domain specified
+        
+        print(f"[-] Generating {count} logs for domain: {args.domain}")
+        start_time = datetime.now() - timedelta(minutes=60)
+        
+        for _ in range(count):
+            dt = random.uniform(0, 3600)
+            ts = start_time + timedelta(seconds=dt)
+            
+            if args.domain == "Authentication":
+                l = dom_gen.generate_auth_log(ts)
+            elif args.domain == "Endpoint":
+                l = dom_gen.generate_endpoint_log(ts)
+            elif args.domain == "Web":
+                l = dom_gen.generate_web_log(ts)
+            elif args.domain == "Asset":
+                l = dom_gen.generate_asset_log(ts)
+            elif args.domain == "Alert":
+                l = dom_gen.generate_security_alert(ts)
+            elif args.domain == "DNS":
+                l = dom_gen.generate_dns_log(ts)
+            elif args.domain == "Cloud":
+                l = dom_gen.generate_cloud_log(ts)
+            else: # Network default
+                l = dom_gen.generate_network_log(ts)
+                
+            # Convert to dict
+            log_dict = l.to_dict()
+            # Fix datetime serialization
+            log_dict['raw_log'] = json.dumps(log_dict, default=str) 
+            logs.append(log_dict)
+            
+        # Merge Pattern Logs
+        if 'pattern_logs' in locals() and pattern_logs:
+             print(f"[-] Merging {len(pattern_logs)} pattern logs...")
+             # Fix datetime for serialization in pattern logs too if needed
+             for pl in pattern_logs:
+                 pl['raw_log'] = json.dumps(pl, default=str)
+                 logs.append(pl)
+             
+        # Write
+        # Sort using the datetime object
+        logs.sort(key=lambda x: x['timestamp'])
+        
+        # Determine serializer helper for the final write_json
+        def json_serial(obj):
+            if isinstance(obj, (datetime, date)):
+                return obj.isoformat()
+            raise TypeError ("Type %s not serializable" % type(obj))
+
+        # We need to custom write here because gen.writer.write_json might fail too if it doesn't handle datetime
+        # Let's check fortigate_formatter.py LogWriter... usually it handles it or expects strings.
+        # Actually LogWriter uses json.dump(..., default=str) usually.
+        # But let's check. 
+        # Safest is to convert timestamp to string in the dict itself before passing to writer?
+        # But sort needs datetime.
+        
+        # Let's rely on LogWriter's internal handling if possible, OR just update the list after sort.
+        # REMOVED: Redundant conversion loop that caused AttributeError in LogWriter
+        
+        gen.writer.write_json(logs, "simulated_fortigate_logs")
+        gen.writer.write_csv(logs)
+        print(f"[+] Domain generation complete: {len(logs)} logs.")
+        sys.exit(0)
+
+    # Legacy / Granular Mode (if no domain specified)
     # If any specific counts are provided, use granular mode
     if args.baseline or args.ssh or args.dns or args.beacon:
         granular_counts = {

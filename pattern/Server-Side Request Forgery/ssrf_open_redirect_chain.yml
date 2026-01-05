@@ -1,0 +1,26 @@
+title: SSRF - Open Redirect / Redirect Chain Exploitation
+id: ssrf-004
+status: test
+description: Detects SSRF behavior where a request begins to a trusted host but follows a redirect chain resulting in internal network access.
+references:
+  - https://portswigger.net/web-security/ssrf
+author: SOC Detection Engineering
+date: 2026-01-05
+tags:
+  - attack.initial-access
+  - ssrf
+  - redirect
+logsource:
+  category: webserver
+detection:
+  selection:
+    http.status: 302
+  internal_redirect:
+    network.request|contains:
+      - "127.0.0.1"
+      - "localhost"
+      - "10."
+  condition: selection and internal_redirect
+falsepositives:
+  - Legitimate redirected SSO services
+level: high

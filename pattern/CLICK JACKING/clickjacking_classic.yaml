@@ -1,0 +1,24 @@
+rule:
+  id: CJ-CLASSIC-001
+  name: Classic Clickjacking Detection
+  description: Detects pages loaded in iframes without frame protection headers
+  severity: high
+
+  logsource:
+    category: web_server
+    product: web_app
+
+  detection:
+    selection:
+      response_headers_missing:
+        - "X-Frame-Options"
+        - "Content-Security-Policy"
+    condition: selection
+
+  fields:
+    - request_uri
+    - response_headers
+
+  alert:
+    message: "Classic clickjacking risk detected"
+    action: "Add X-Frame-Options or CSP frame-ancestors"

@@ -1,0 +1,25 @@
+title: XML External Entity - Blind Out-of-Band Callback
+id: xxe-002
+status: test
+description: Detects Blind XXE where entity resolution triggers outbound HTTP/DNS requests to attacker-controlled infrastructure.
+references:
+  - https://owasp.org/www-community/vulnerabilities/XML_External_Entity_(XXE)_Processing
+author: SOC Detection Engineering
+date: 2026-01-05
+tags:
+  - attack.initial-access
+  - exfiltration
+  - detection.emerging-threats
+logsource:
+  category: webserver
+detection:
+  selection:
+    http.request.body|contains: "<!DOCTYPE"
+  anomaly:
+    network.outbound|contains:
+      - "http://"
+      - "https://"
+  condition: selection and anomaly
+falsepositives:
+  - Rare XML integrations calling external entities legitimately
+level: critical

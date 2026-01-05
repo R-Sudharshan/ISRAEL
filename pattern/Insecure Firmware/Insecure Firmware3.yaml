@@ -1,0 +1,23 @@
+Insecure Firmware3
+
+title: IoT Firmware Update Triggered via Web Endpoint
+id: iot-firmware-web-trigger-003
+status: stable
+description: Detects firmware upload attempts via web management endpoints
+author: SOC Team
+date: 2026-01-05
+logsource:
+  category: web
+  product: iot_device
+detection:
+  selection:
+    http_method: POST
+    url:
+      - "/update"
+      - "/firmware"
+      - "/upload"
+  condition: selection
+level: critical
+tags:
+  - attack.initial_access
+  - attack.t1190

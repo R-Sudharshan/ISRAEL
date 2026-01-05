@@ -1,0 +1,23 @@
+version: "1.0"
+rule_set: "cors_misconfiguration_detection"
+
+rule:
+  id: CORS-001
+  name: Wildcard Origin with Credentials
+  severity: critical
+  confidence: high
+  description: >
+    Detects responses that allow credentials while using a wildcard
+    Access-Control-Allow-Origin value, which may expose authenticated data.
+  conditions:
+    all:
+      - response.headers.access-control-allow-origin == "*"
+      - response.headers.access-control-allow-credentials == "true"
+  evidence_fields:
+    - response.headers.access-control-allow-origin
+    - response.headers.access-control-allow-credentials
+  risk_reason: >
+    Credentialed cross-origin requests are permitted from any origin.
+  references:
+    - OWASP A05:2021 – Security Misconfiguration
+    - W3C CORS Specification

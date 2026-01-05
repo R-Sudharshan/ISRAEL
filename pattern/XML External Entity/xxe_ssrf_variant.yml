@@ -1,0 +1,26 @@
+title: XML External Entity - SSRF Variant
+id: xxe-003
+status: test
+description: Detects XXE attacks abusing XML entity resolution to perform SSRF requests to internal services such as metadata APIs or intranet endpoints.
+references:
+  - https://portswigger.net/web-security/xxe/ssrf
+author: SOC Detection Engineering
+date: 2026-01-05
+tags:
+  - attack.initial-access
+  - ssrf
+  - internal-access
+logsource:
+  category: webserver
+detection:
+  selection:
+    http.request.body|contains: "<!DOCTYPE"
+  internal_target:
+    network.request|contains:
+      - "169.254.169.254"
+      - "127.0.0.1"
+      - "localhost"
+  condition: selection and internal_target
+falsepositives:
+  - Legitimate internal service XML integrations
+level: critical

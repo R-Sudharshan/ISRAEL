@@ -1,0 +1,18 @@
+title: Missing Content Security Policy (CSP)
+id: a2-csp-missing
+description: Detects web responses missing Content-Security-Policy header (Risk: XSS execution control failure)
+status: experimental
+logsource:
+  category: webserver
+detection:
+  selection:
+    http.response.status: 200
+    http.response.header.content-type|contains: "text/html"
+  filter_missing:
+    http.response.header.content-security-policy|contains: ""
+  condition: selection AND NOT filter_missing
+level: high
+tags:
+  - web
+  - csp
+  - owasp-a03

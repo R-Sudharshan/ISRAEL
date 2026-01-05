@@ -1,0 +1,24 @@
+version: "1.0"
+rule_set: "jwt_abuse_detection"
+
+rule:
+  id: JWT-004
+  name: JWT Claim Tampering Detected
+  severity: high
+  confidence: medium
+  description: >
+    Detects JWT tokens containing abnormal or privilege-escalating claim
+    values compared to known baselines.
+  conditions:
+    all:
+      - auth.jwt.claims.role not in allowed_role_set
+      - auth.jwt.validated == true
+  evidence_fields:
+    - auth.jwt.claims
+    - request.endpoint
+    - client.identifier
+  risk_reason: >
+    Modified claims may indicate token manipulation or misissued tokens.
+  references:
+    - OWASP JWT Cheat Sheet
+    - OWASP API Security Top 10: API5

@@ -1,0 +1,21 @@
+title: SSRF - Blind Out-of-Band Callback
+id: ssrf-003
+status: test
+description: Detects blind SSRF attempts where the application makes outbound HTTP or DNS requests to attacker-controlled infrastructure with no inline response leak.
+references:
+  - https://owasp.org/www-community/attacks/Server_Side_Request_Forgery
+author: SOC Detection Engineering
+date: 2026-01-05
+tags:
+  - attack.initial-access
+  - exfiltration
+  - detection.emerging-threats
+logsource:
+  category: webserver
+detection:
+  selection:
+    outbound.connection|contains: "http://"
+  condition: selection
+falsepositives:
+  - Scheduled outbound integrations
+level: high

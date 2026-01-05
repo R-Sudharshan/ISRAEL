@@ -1,0 +1,25 @@
+title: HTTP Request Smuggling - Duplicate Content-Length Headers
+id: hrs-clcl-004
+status: test
+description: Detects smuggling attempts using multiple Content-Length headers which cause parsing disagreement.
+references:
+  - https://portswigger.net/web-security/request-smuggling
+  - https://owasp.org/www-community/vulnerabilities/HTTP_Request_Smuggling
+author: SOC Detection Engineering
+date: 2026-01-05
+tags:
+  - attack.initial-access
+  - detection.http-desync
+  - protocol-violation
+logsource:
+  category: webserver
+detection:
+  selection:
+    cs-method|contains:
+      - "POST"
+      - "PUT"
+    http.request.headers|re: "(?i)(Content-Length.*Content-Length)"
+  condition: selection
+falsepositives:
+  - Broken or experimental clients
+level: high

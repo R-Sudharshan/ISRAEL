@@ -1,0 +1,27 @@
+rule:
+  id: XSS-STORED-001
+  name: Stored XSS Detection
+  description: Detects JavaScript payloads being stored in application inputs
+  severity: critical
+
+  logsource:
+    category: application
+    product: web_app
+
+  detection:
+    selection:
+      request_body|contains:
+        - "<script>"
+        - "</script>"
+        - "onerror="
+        - "onload="
+    condition: selection
+
+  fields:
+    - src_ip
+    - request_uri
+    - request_body
+
+  alert:
+    message: "Stored XSS attempt detected (payload stored)"
+    action: "Sanitize inputs and encode output"

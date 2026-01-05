@@ -1,0 +1,29 @@
+rule:
+  id: XSS-BLIND-004
+  name: Blind XSS Detection
+  description: Detects delayed XSS execution in admin or backend panels
+  severity: critical
+
+  logsource:
+    category: application
+    product: admin_panel
+
+  detection:
+    selection:
+      outbound_request|contains:
+        - "http://"
+        - "https://"
+      source_field|contains:
+        - "User-Agent"
+        - "Comment"
+        - "Ticket"
+    condition: selection
+
+  fields:
+    - src_ip
+    - outbound_request
+    - source_field
+
+  alert:
+    message: "Blind XSS triggered in privileged interface"
+    action: "Isolate admin system and sanitize stored data"

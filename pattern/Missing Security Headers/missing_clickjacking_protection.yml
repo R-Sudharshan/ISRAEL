@@ -1,0 +1,20 @@
+title: Missing X-Frame-Options or Frame-Ancestors
+id: a3-clickjacking-protection-missing
+description: Detects missing clickjacking protection headers
+status: experimental
+logsource:
+  category: webserver
+detection:
+  selection:
+    http.response.status: 200
+    http.response.header.content-type|contains: "text/html"
+  missing_xfo:
+    http.response.header.x-frame-options|contains: ""
+  missing_csp_frame:
+    http.response.header.content-security-policy|contains: ""
+  condition: selection AND (NOT missing_xfo AND NOT missing_csp_frame)
+level: high
+tags:
+  - web
+  - clickjacking
+  - owasp-a05

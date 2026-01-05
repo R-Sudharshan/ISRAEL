@@ -1,0 +1,26 @@
+version: "1.0"
+rule_set: "websocket_abuse_detection"
+
+rule:
+  id: WS-002
+  name: Cookie-Based WebSocket Authentication
+  severity: high
+  confidence: medium
+  description: >
+    Detects WebSocket connections authenticated solely via cookies,
+    increasing the risk of session hijacking.
+  conditions:
+    all:
+      - request.protocol == "websocket"
+      - request.headers.cookie exists
+      - request.headers.authorization not exists
+      - response.status_code == 101
+  evidence_fields:
+    - request.headers.cookie
+    - request.headers.origin
+    - request.endpoint
+  risk_reason: >
+    WebSocket connections authenticated only by cookies may inherit
+    cross-site request risks.
+  references:
+    - OWASP WebSocket Security Cheat Sheet

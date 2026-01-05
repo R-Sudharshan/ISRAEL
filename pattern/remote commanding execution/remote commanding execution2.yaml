@@ -1,0 +1,22 @@
+remote commanding execution2
+
+title: RCE via Insecure Deserialization
+id: rce-insecure-deserialization-002
+status: stable
+description: Detects unsafe object deserialization leading to code execution
+author: SOC Team
+date: 2026-01-06
+logsource:
+  category: application
+  product: java
+detection:
+  selection:
+    log_message:
+      - "*readObject*"
+      - "*InvalidClassException*"
+      - "*CommonsCollections*"
+  condition: selection
+level: high
+tags:
+  - attack.execution
+  - attack.t1203

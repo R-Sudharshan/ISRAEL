@@ -1,0 +1,20 @@
+DEVICE SPOOFING1
+
+title: Device Spoofing via MAC Address Change
+id: device-spoofing-mac-001
+status: stable
+description: Detects a single IP address associated with multiple MAC addresses
+author: SOC Team
+date: 2026-01-06
+logsource:
+  category: network
+  product: dhcp
+detection:
+  selection:
+    event_type: dhcp_ack
+  condition:
+    selection | count(mac_address) > 1 within 5m
+level: high
+tags:
+  - attack.defense_evasion
+  - attack.t1036

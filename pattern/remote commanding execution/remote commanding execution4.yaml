@@ -1,0 +1,22 @@
+remote commanding execution4
+
+title: RCE via Exposed Management Interface
+id: rce-management-interface-004
+status: stable
+description: Detects command execution via unauthenticated admin APIs
+author: SOC Team
+date: 2026-01-06
+logsource:
+  category: api
+  product: docker
+detection:
+  selection:
+    api_endpoint:
+      - "/containers/create"
+      - "/exec"
+    request_method: POST
+  condition: selection
+level: critical
+tags:
+  - attack.execution
+  - attack.t1106

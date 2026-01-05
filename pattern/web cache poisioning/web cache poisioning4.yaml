@@ -1,0 +1,24 @@
+version: "1.0"
+rule_set: "web_cache_poisoning_detection"
+
+rule:
+  id: WCP-004
+  name: Path Normalization Cache Poisoning
+  severity: medium
+  confidence: medium
+  description: >
+    Detects discrepancies caused by non-canonical URL paths that may be
+    normalized differently by caches and origin servers.
+  conditions:
+    all:
+      - request.url.path matches regex "(//|/\\.\\./|/\\.\\.)"
+      - cache.response.cached == true
+  evidence_fields:
+    - request.url.path
+    - cache.response.cached
+  risk_reason: >
+    URL normalization differences may cause incorrect content to be cached
+    and served to other users.
+  references:
+    - RFC 3986
+    - CDN Security Best Practices

@@ -1,0 +1,23 @@
+version: "1.0"
+rule_set: "cors_misconfiguration_detection"
+
+rule:
+  id: CORS-003
+  name: Overly Broad Subdomain Trust
+  severity: high
+  confidence: medium
+  description: >
+    Detects CORS configurations that trust entire subdomain ranges, which
+    increases risk if a subdomain is compromised or taken over.
+  conditions:
+    all:
+      - request.headers.origin matches regex "^https://.*\\.trusted-domain\\.com$"
+      - response.headers.access-control-allow-origin matches regex "^https://.*\\.trusted-domain\\.com$"
+  evidence_fields:
+    - request.headers.origin
+    - response.headers.access-control-allow-origin
+  risk_reason: >
+    Broad subdomain trust expands the cross-origin attack surface.
+  references:
+    - OWASP CORS Security Cheat Sheet
+    - CWE-942

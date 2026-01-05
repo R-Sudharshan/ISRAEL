@@ -1,0 +1,23 @@
+version: "1.0"
+rule_set: "websocket_abuse_detection"
+
+rule:
+  id: WS-003
+  name: WebSocket Token Reuse Across Connections
+  severity: medium
+  confidence: medium
+  description: >
+    Detects reuse of the same authentication token across multiple
+    WebSocket connections from different sources.
+  conditions:
+    all:
+      - websocket.auth.token reused_from_multiple_sources == true
+      - websocket.connection.count > defined_threshold
+  evidence_fields:
+    - websocket.auth.token
+    - client.ip
+    - websocket.connection.count
+  risk_reason: >
+    Token reuse may indicate WebSocket session hijacking or replay.
+  references:
+    - OWASP API Security Top 10

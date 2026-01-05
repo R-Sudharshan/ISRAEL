@@ -1,0 +1,26 @@
+rule:
+  id: SQLI-UNION-002
+  name: UNION-Based SQL Injection
+  description: Detects UNION SELECT usage in HTTP requests
+  severity: critical
+
+  logsource:
+    category: web_server
+    product: apache
+
+  detection:
+    selection:
+      request_uri|contains:
+        - "UNION SELECT"
+        - "union+select"
+        - "UNION+ALL+SELECT"
+    condition: selection
+
+  fields:
+    - src_ip
+    - request_uri
+    - http_method
+
+  alert:
+    message: "UNION-based SQL Injection detected"
+    action: "Block request and audit database exposure"

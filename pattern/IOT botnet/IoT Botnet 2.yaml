@@ -1,0 +1,27 @@
+IoT Botnet 2
+
+title: IoT Botnet DDoS Traffic Flooding
+id: 6b2d0c91-9f44-4f29-8c3a-21cfa7e2b002
+status: test
+description: >
+  Detects IoT devices generating excessive outbound network traffic
+  consistent with botnet-driven DDoS attacks.
+author: SOC-Team
+date: 2026-01-05
+tags:
+  - attack.impact
+  - attack.t1498
+  - attack.iot
+logsource:
+  category: network
+detection:
+  selection:
+    network.protocol:
+      - udp
+      - tcp
+    bytes_sent|gt: 1000
+  condition: selection
+falsepositives:
+  - Firmware updates
+  - High-bandwidth video streaming
+level: critical

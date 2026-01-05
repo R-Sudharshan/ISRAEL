@@ -1,0 +1,27 @@
+rule:
+  id: XSS-DOM-003
+  name: DOM-Based XSS Detection
+  description: Detects client-side XSS via URL fragments and DOM manipulation
+  severity: medium
+
+  logsource:
+    category: browser_security
+    product: csp
+
+  detection:
+    selection:
+      message|contains:
+        - "document.location"
+        - "location.hash"
+        - "innerHTML"
+        - "DOM XSS"
+    condition: selection
+
+  fields:
+    - src_ip
+    - message
+    - violated_directive
+
+  alert:
+    message: "DOM-based XSS detected via client-side execution"
+    action: "Fix unsafe JavaScript DOM handling"

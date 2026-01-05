@@ -1,0 +1,20 @@
+Packet Stuffing2
+
+title: Packet Stuffing via UDP Flood
+id: packet-stuffing-udp-002
+status: stable
+description: Detects excessive UDP packets sent to a single destination
+author: SOC Team
+date: 2026-01-06
+logsource:
+  category: network
+  product: router
+detection:
+  selection:
+    protocol: UDP
+  condition:
+    selection | count(destination_port) > 500 within 30s
+level: high
+tags:
+  - attack.availability
+  - attack.t1498

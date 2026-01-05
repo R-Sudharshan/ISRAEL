@@ -1,0 +1,26 @@
+rule:
+  id: CSRF-FORM-001
+  name: Form-Based CSRF Detection
+  description: Detects POST requests with valid session cookies but missing CSRF tokens
+  severity: high
+
+  logsource:
+    category: web_application
+    product: web_server
+
+  detection:
+    selection:
+      http_method: POST
+      csrf_token: null
+    condition:
+      selection and referer not startswith "https://trusted-site.com"
+
+  fields:
+    - src_ip
+    - request_uri
+    - http_method
+    - referer
+
+  alert:
+    message: "Form-based CSRF attempt detected"
+    action: "Enforce CSRF tokens and SameSite cookies"

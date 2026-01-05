@@ -1,0 +1,28 @@
+title: HTTP Response Splitting - HTTP2 to HTTP1 Desynchronization
+id: hrs-rs-005
+status: test
+description: Detects HTTP Response Splitting caused by protocol downgrade inconsistencies between HTTP/2 front-ends and HTTP/1.1 backends.
+references:
+  - https://portswigger.net/research/http2
+  - https://www.cloudflare.com/learning/security/http-desync/
+author: SOC Detection Engineering
+date: 2026-01-05
+tags:
+  - attack.initial-access
+  - protocol-downgrade
+  - detection.http2
+logsource:
+  category: webserver
+detection:
+  selection:
+    http.version: "2"
+  backend:
+    backend.http.version: "1.1"
+  anomaly:
+    http.anomaly|contains:
+      - "response boundary"
+      - "split detected"
+  condition: selection and backend or anomaly
+falsepositives:
+  - Experimental HTTP/2 features
+level: critical

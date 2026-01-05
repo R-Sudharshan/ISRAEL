@@ -1,0 +1,24 @@
+IoT Botnet 4
+
+title: IoT Botnet DNS Tunneling Activity
+id: e92d3f77-3d91-4e1a-9a70-51b1e4f0a004
+status: test
+description: >
+  Detects long or encoded DNS queries from IoT devices that may
+  indicate DNS tunneling for botnet command-and-control or data exfiltration.
+author: SOC-Team
+date: 2026-01-05
+tags:
+  - attack.exfiltration
+  - attack.t1048
+  - attack.iot
+logsource:
+  category: dns
+detection:
+  selection:
+    query|re: '[A-Za-z0-9+/=]{40,}'
+  condition: selection
+falsepositives:
+  - Content delivery networks
+  - DNS-based service discovery
+level: high

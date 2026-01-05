@@ -1,0 +1,26 @@
+rule:
+  id: SQLI-OOB-005
+  name: Out-of-Band SQL Injection
+  description: Detects database-triggered external DNS or SMB communication
+  severity: critical
+
+  logsource:
+    category: network_traffic
+    product: dns
+
+  detection:
+    selection:
+      query|contains:
+        - "xp_dirtree"
+        - "xp_cmdshell"
+        - "\\\\"
+    condition: selection
+
+  fields:
+    - src_ip
+    - query
+    - dst_domain
+
+  alert:
+    message: "Out-of-Band SQL Injection detected via external communication"
+    action: "Isolate database server and block outbound traffic"
