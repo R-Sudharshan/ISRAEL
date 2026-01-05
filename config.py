@@ -3,7 +3,7 @@ import os
 class Config:
     DB_HOST = os.environ.get('DB_HOST', 'localhost') 
     DB_USER = os.environ.get('DB_USER', 'root')
-    DB_PASSWORD = os.environ.get('DB_PASSWORD', 'password123') # Ensure you set your local MySQL password here
+    DB_PASSWORD = os.environ.get('DB_PASSWORD', 'password') # Ensure you set your local MySQL password here
     DB_NAME = os.environ.get('DB_NAME', 'iot_security')
 
     # Flask Configuration

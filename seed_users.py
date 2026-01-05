@@ -29,7 +29,7 @@ def seed_users():
     if admin_id:
         print(f"Admin ID resolved: {admin_id}")
         # Create Analyst managed by Admin
-        if AuthManager.create_user('analyst', 'user123', 'user', managed_by=admin_id):
+        if AuthManager.create_user('analyst', 'analyst123', 'analyst', managed_by=admin_id):
             print(f"Created/Reset: analyst (Linked to admin)")
         else:
              # Try to update existing analyst to link to admin

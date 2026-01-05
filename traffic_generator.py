@@ -8,42 +8,8 @@ from typing import List, Dict, Any
 
 from fortigate_formatter import FortiLogBuilder, LogWriter
 from attack_profiles import AttackSimulator
-from dataset_loader import DatasetLoader
 
 class TrafficGenerator:
-    def _generate_single_log(self, svc, start_time, duration):
-        dt = random.uniform(0, duration * 3600)
-        ts = start_time + timedelta(seconds=dt)
-        src_ip = self._get_random_internal_ip()
-        dst_ip = self._get_random_external_ip() # Default to external unless overridden
-        
-        # Override for DNS if needed
-        if svc['name'] == 'DNS':
-            dst_ip = "8.8.8.8"
-
-        log = {
-            "timestamp": ts,
-            "srcip": src_ip,
-            "dstip": dst_ip,
-            "srcport": random.randint(10000, 65000),
-            "dstport": svc["port"],
-            "proto": svc["proto"],
-            "service": svc["name"],
-            "action": "accept",
-            "policyid": 1,
-            "sentbyte": random.randint(100, 5000),
-            "rcvdbyte": random.randint(100, 50000),
-            "duration": random.randint(1, 60),
-            "user": f"user-{random.randint(1, 50)}",
-            "device_type": "workstation",
-            "level": "notice",
-            "logid": "0000000013",
-            "srccountry": "Reserved",
-            "dstcountry": "United States",
-            "agent": random.choice(self.user_agents) if "http" in svc['name'] else "N/A"
-        }
-        return log
-
     def __init__(self, config_path: str):
         with open(config_path, 'r') as f:
             self.config = json.load(f)
@@ -52,38 +18,17 @@ class TrafficGenerator:
         self.writer = LogWriter("simulated_fortigate_logs")
         self.attacker = AttackSimulator(self.config)
         
-        # Dataset Integration
-        self.use_dataset = self.config.get("dataset", {}).get("enabled", False)
-        if self.use_dataset:
-            self.loader = DatasetLoader(self.config["dataset"]["path"])
-        
         # Cache network objects
         self.internal_nets = [ipaddress.IPv4Network(cidr) for cidr in self.config["network"]["internal_cidrs"]]
         self.external_nets = [ipaddress.IPv4Network(cidr) for cidr in self.config["network"]["external_cidrs"]]
-        
-        self.user_agents = [
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0",
-            "Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1"
-        ]
-        self.saas_domains = ["outlook.office365.com", "teams.microsoft.com", "sharepoint.com", "salesforce.com"]
 
     def _get_random_internal_ip(self) -> str:
-        if self.use_dataset:
-            # Pick a real internal-looking IP from dataset
-            return self.loader.get_random_asset()
         subnet = random.choice(self.internal_nets)
         network_int = int(subnet.network_address)
         max_hosts = subnet.num_addresses - 1
         return str(ipaddress.IPv4Address(network_int + random.randint(1, max_hosts)))
 
     def _get_random_external_ip(self) -> str:
-        if self.use_dataset:
-            # In dataset mode, we can still use random external IPs for baseline "outbound" traffic
-            # or pick another asset if we want to simulate internal movements.
-            # Let's keep external IPs random unless it's an "internal" scan.
-            pass
         subnet = random.choice(self.external_nets)
         network_int = int(subnet.network_address)
         max_hosts = subnet.num_addresses - 1
@@ -95,86 +40,42 @@ class TrafficGenerator:
         end_time = start_time + timedelta(hours=duration_hours)
         current_time = start_time
         
-        # Pre-load dataset assets if available
-        workstations = []
-        servers = []
-        if self.use_dataset:
-            workstations = self.loader.get_devices()
-            servers = self.loader.get_servers()
-            # Fallback if classification was empty but assets exist
-            if not workstations and not servers:
-                workstations = self.loader.get_all_ips()
-
-        # Pre-calculate services weights for fallback/random mode
+        # Pre-calculate services weights
         services = self.config["baseline"]["services"]
         service_choices = [s for s in services]
         service_weights = [s["weight"] for s in services]
         
+        # Simulation loop
+        # Instead of second-by-second, we'll jump by small random intervals
         while current_time < end_time:
-            # Random time increment
+            # Time increment: Random between 0.1s and 2s for "busty" feel
             dt = random.uniform(0.1, 2.0)
             current_time += timedelta(seconds=dt)
-            if current_time > end_time: break
+            
+            if current_time > end_time:
+                break
                 
+            # Randomly decide how many events in this burst (1 to 5)
             burst_size = random.randint(1, 5)
             
             for _ in range(burst_size):
-                # DEFAULT VALUES
-                action = "accept"
+                svc = random.choices(service_choices, weights=service_weights, k=1)[0]
                 
-                # LOGIC BRANCH: DATASET MODE VS RANDOM MODE
-                if self.use_dataset and (workstations or servers):
-                    # 70% Workstation Outbound, 30% Server Inbound (if servers exist)
-                    is_server_inbound = (random.random() < 0.3) and bool(servers)
-                    
-                    if is_server_inbound:
-                        # SCENARIO: External User -> Internal Server
-                        # We hit a specific Open Port on the server
-                        dst_ip = random.choice(servers)
-                        open_ports = self.loader.get_open_ports(dst_ip)
-                        
-                        if open_ports:
-                            svc = random.choice(open_ports)
-                            dst_port = svc['port']
-                            svc_name = svc['name']
-                            proto = svc['proto']
-                        else:
-                            # Fallback if no specific ports found
-                            dst_port = 80; svc_name = "http"; proto = 6
-                        
-                        src_ip = self._get_random_external_ip()
-                        device_type = "external_user"
-                        
-                    else:
-                        # SCENARIO: Internal Workstation -> External Web
-                        # Browsing traffic
-                        src_ip = random.choice(workstations) if workstations else "192.168.1.50"
-                        dst_ip = self._get_random_external_ip()
-                        device_type = "workstation"
-                        
-                        # Mostly HTTP/HTTPS
-                        r = random.random()
-                        if r < 0.6:
-                            dst_port = 443; svc_name = "https"; proto = 6
-                        elif r < 0.9:
-                            dst_port = 80; svc_name = "http"; proto = 6
-                        else:
-                            # Occasional other traffic (DNS, etc)
-                            dst_port = 53; svc_name = "DNS"; proto = 17
-                            dst_ip = "8.8.8.8"
-                
+                # Device Type Selection
+                if hasattr(self, 'device_categories') and self.device_categories:
+                    dev_type = random.choice(self.device_categories)
                 else:
-                    # RANDOM MODE (Legacy/Config based)
-                    src_ip = self._get_random_internal_ip()
-                    dst_ip = self._get_random_external_ip()
-                    svc = random.choices(service_choices, weights=service_weights, k=1)[0]
-                    dst_port = svc["port"]
-                    proto = svc["proto"]
-                    svc_name = svc["name"]
-                    device_type = "workstation"
+                    dev_type = "workstation"
 
+                src_ip = self._get_random_internal_ip()
+                dst_ip = self._get_random_external_ip()
+                
                 # NAT/Port logic simulated loosely
                 src_port = random.randint(10000, 65000)
+                
+                # Protocol
+                proto = svc["proto"]
+                dst_port = svc["port"]
                 
                 # Bytes
                 sent = random.randint(100, 5000)
@@ -187,92 +88,89 @@ class TrafficGenerator:
                     "srcport": src_port,
                     "dstport": dst_port,
                     "proto": proto,
-                    "service": svc_name,
-                    "action": action,
-                    "policyid": 1 if device_type == "workstation" else 2, # 1=Outbound, 2=Inbound
+                    "service": svc["name"],
+                    "action": "accept",
+                    "policyid": 1,
                     "sentbyte": sent,
                     "rcvdbyte": rcvd,
                     "duration": random.randint(1, 60),
-                    "user": f"user-{random.randint(1, 50)}" if device_type == "workstation" else "N/A",
-                    "device_type": device_type,
+                    "user": f"user-{random.randint(1, 50)}",
+                    "device_type": dev_type,
                     "level": "notice",
                     "logid": "0000000013",
-                    "srccountry": "Reserved" if ipaddress.ip_address(src_ip).is_private else "United States",
-                    "dstcountry": "United States",
-                    "agent": random.choice(self.user_agents) if "http" in svc_name else "N/A"
+                    "srccountry": "Reserved",
+                    "dstcountry": "United States"
                 }
-                
-                # SaaS Simulation (Randomly override destination for 5% of web traffic)
-                if device_type == "workstation" and "http" in svc_name and random.random() < 0.05:
-                    log["dstdomain"] = random.choice(self.saas_domains)
-                    
                 logs.append(log)
                 
         print(f"[-] Generated {len(logs)} baseline events.")
         return logs
 
-    def run(self, counts=None, time_offset_mins=0):
+    def run(self, counts=None, device_categories=None):
         """
         Runs the simulation. 
         'counts' can be a dict specifying exactly how many of each to generate.
-        'time_offset_mins' pushes the end of the simulation window into the past.
+        'device_categories' is a list of allowed device types.
         """
-        now = datetime.now() - timedelta(minutes=time_offset_mins)
+        now = datetime.now()
         # We align the simulation to END at 'now'
         duration = self.config["simulation"]["duration_hours"]
         start_time = now - timedelta(hours=duration)
         
         all_logs = []
         
+        if device_categories:
+            self.device_categories = device_categories
+        else:
+            self.device_categories = []
+            
         if counts:
             # GRANULAR MODE
-
-            # --- GRANULAR BASELINE BY PROTOCOL ---
-            if counts.get('http', 0) > 0:
-                print(f"[-] Generating {counts['http']} HTTP baseline events...")
-                for _ in range(counts['http']):
-                    # Simulate HTTP/HTTPS explicitly
-                    svc = {"port": 443, "name": "https", "proto": 6} if random.random() < 0.7 else {"port": 80, "name": "http", "proto": 6}
-                    all_logs.append(self._generate_single_log(svc, start_time, duration))
-
-            if counts.get('dns_normal', 0) > 0:
-                 print(f"[-] Generating {counts['dns_normal']} DNS baseline events...")
-                 svc = {"port": 53, "name": "DNS", "proto": 17}
-                 for _ in range(counts['dns_normal']):
-                     all_logs.append(self._generate_single_log(svc, start_time, duration))
-
-            if counts.get('ssh_normal', 0) > 0:
-                 print(f"[-] Generating {counts['ssh_normal']} SSH baseline events...")
-                 svc = {"port": 22, "name": "SSH", "proto": 6}
-                 for _ in range(counts['ssh_normal']):
-                    all_logs.append(self._generate_single_log(svc, start_time, duration))
-
-            # Generic Baseline (Mixed)
             if counts.get('baseline', 0) > 0:
-                print(f"[-] Generating {counts['baseline']} mixed baseline events...")
+                # We reuse generate_baseline but limit it or modify it
+                # For simplicity, we generate a small batch based on the requested count
+                print(f"[-] Generating {counts['baseline']} baseline events...")
                 services = self.config["baseline"]["services"]
                 service_choices = [s for s in services]
                 service_weights = [s["weight"] for s in services]
                 
                 for _ in range(counts['baseline']):
                     svc = random.choices(service_choices, weights=service_weights, k=1)[0]
-                    all_logs.append(self._generate_single_log(svc, start_time, duration))
+                    dt = random.uniform(0, duration * 3600)
+                    ts = start_time + timedelta(seconds=dt)
+                    log = {
+                        "timestamp": ts,
+                        "srcip": self._get_random_internal_ip(),
+                        "dstip": self._get_random_external_ip(),
+                        "srcport": random.randint(10000, 65000),
+                        "dstport": svc["port"],
+                        "proto": svc["proto"],
+                        "service": svc["name"],
+                        "action": "accept",
+                        "policyid": 1,
+                        "sentbyte": random.randint(100, 5000),
+                        "rcvdbyte": random.randint(100, 50000),
+                        "duration": random.randint(1, 60),
+                        "user": f"user-{random.randint(1, 50)}",
+                        "device_type": random.choice(self.device_categories) if self.device_categories else "workstation",
+                        "level": "notice",
+                        "logid": "0000000013"
+                    }
+                    all_logs.append(log)
 
             if counts.get('ssh', 0) > 0:
                 print(f"[-] Injecting {counts['ssh']} SSH events...")
                 # Temporarily override config for the generator
                 orig_ssh = self.config["attacks"]["iot_bruteforce"]["attempts_per_run"]
                 self.config["attacks"]["iot_bruteforce"]["attempts_per_run"] = counts['ssh']
-                src_dev = counts.get('device_type')
-                all_logs.extend(self.attacker.generate_iot_bruteforce(start_time, duration, src_ip_override=src_dev))
+                all_logs.extend(self.attacker.generate_iot_bruteforce(start_time, duration))
                 self.config["attacks"]["iot_bruteforce"]["attempts_per_run"] = orig_ssh
 
             if counts.get('dns', 0) > 0:
                 print(f"[-] Injecting {counts['dns']} DNS events...")
-                src_dev = counts.get('device_type')
                 # We need to modify AttackSimulator or just generate here. 
                 # For now, we take a fraction of the standard rate to match the requested count roughly
-                dns_logs = self.attacker.generate_dns_tunneling(start_time, duration, src_ip_override=src_dev)
+                dns_logs = self.attacker.generate_dns_tunneling(start_time, duration)
                 if len(dns_logs) > counts['dns']:
                     all_logs.extend(dns_logs[:counts['dns']])
                 else:
@@ -280,8 +178,7 @@ class TrafficGenerator:
 
             if counts.get('beacon', 0) > 0:
                 print(f"[-] Injecting {counts['beacon']} Beaconing events...")
-                src_dev = counts.get('device_type')
-                beacon_logs = self.attacker.generate_beaconing(start_time, duration, src_ip_override=src_dev)
+                beacon_logs = self.attacker.generate_beaconing(start_time, duration)
                 if len(beacon_logs) > counts['beacon']:
                     all_logs.extend(beacon_logs[:counts['beacon']])
                 else:
@@ -306,221 +203,26 @@ class TrafficGenerator:
         self.writer.write_raw(final_logs, self.formatter)
         print("[+] Simulation complete.")
 
-    def generate_from_pattern(self, pattern_path: str, count: int) -> List[Dict[str, Any]]:
-        """
-        Generates logs based on a YAML pattern definition.
-        """
-        import yaml
-        print(f"[-] Loading pattern from {pattern_path}...")
-        
-        try:
-            with open(pattern_path, 'r') as f:
-                pattern = yaml.safe_load(f)
-        except Exception as e:
-            print(f"[!] Error loading pattern: {e}")
-            return []
-
-        logs = []
-        fields = pattern.get('log_fields', {})
-        query_patterns = pattern.get('query_patterns', {})
-        
-        print(f"[-] Generating {count} events for {pattern.get('attack', {}).get('name', 'unknown_attack')}...")
-
-        for _ in range(count):
-            # Start with a standard template to ensure base fields exist
-            base_log = self._generate_single_log(
-                {"name": "General", "port": 0, "proto": 6}, 
-                datetime.now() - timedelta(minutes=10), 
-                10
-            ) 
-            
-            # Override/Add fields from YAML
-            custom_log = base_log.copy()
-            
-            # 1. Resolve Timestamp
-            if fields.get('timestamp') == 'auto':
-                custom_log['timestamp'] = datetime.now() - timedelta(seconds=random.randint(0, 300))
-
-            # 2. Resolve Host/Source
-            if fields.get('host') == 'from_inventory':
-                if self.use_dataset: 
-                    custom_log['srcip'] = self.loader.get_random_asset()
-                else:
-                    custom_log['srcip'] = self._get_random_internal_ip()
-
-            # 3. Resolve Custom Fields (Database, User, Status)
-            extras = []
-            
-            for field, rule in fields.items():
-                if field in ['timestamp', 'host']: continue
-                
-                val = None
-                
-                # Handle 'values' list
-                if isinstance(rule, dict) and 'values' in rule:
-                    val = random.choice(rule['values'])
-                
-                # Handle 'source: query_patterns'
-                elif isinstance(rule, dict) and rule.get('source') == 'query_patterns':
-                    # Pick a random category then a random example
-                    cat = random.choice(list(query_patterns.keys()))
-                    exs = query_patterns[cat].get('examples', [])
-                    if exs: val = random.choice(exs)
-                
-                # Handle simple raw value
-                elif not isinstance(rule, dict):
-                    val = rule
-
-                if val:
-                    custom_log[field] = val 
-                    extras.append(f"{field}={val}")
-
-            # Construct Message
-            if 'sql_query' in custom_log:
-                custom_log['msg'] = f"SQL Activity: {custom_log['sql_query']} | Status: {custom_log.get('status', 'unknown')}"
-            else:
-                custom_log['msg'] = "Pattern Event: " + " | ".join(extras)
-                
-            # Set Service/Port if implied by category (e.g. database -> 1433/3306)
-            if pattern.get('attack', {}).get('category') == 'database':
-                custom_log['dstport'] = 3306
-                custom_log['service'] = 'MySQL'
-                
-            logs.append(custom_log)
-            
-        # Noise Generation (Optional)
-        noise = pattern.get('noise', {})
-        if noise:
-            n_count = noise.get('before', {}).get('normal_queries', 0)
-            if n_count > 0:
-                print(f"[-] Generating {n_count} noise events...")
-                # Generate generic baseline traffic
-                logs.extend(self.generate_baseline(datetime.now(), 1)[:n_count]) # Take first N
-
-        return logs
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Synthetic FortiGate Log Generator")
     parser.add_argument("--config", default="config.json", help="Path to config file")
-    parser.add_argument("--baseline", type=int, default=0, help="Number of mixed baseline logs")
-    parser.add_argument("--http", type=int, default=0, help="Number of HTTP logs")
-    parser.add_argument("--dns_normal", type=int, default=0, help="Number of Normal DNS logs")
-    parser.add_argument("--ssh_normal", type=int, default=0, help="Number of Normal SSH logs")
-    
+    parser.add_argument("--baseline", type=int, default=0, help="Number of baseline logs to generate")
     parser.add_argument("--ssh", type=int, default=0, help="Number of SSH attack logs to generate")
     parser.add_argument("--dns", type=int, default=0, help="Number of DNS attack logs to generate")
     parser.add_argument("--beacon", type=int, default=0, help="Number of Beacon logs to generate")
-    parser.add_argument("--seed", type=int, default=None, help="Random seed for reproducibility")
-    parser.add_argument("--offset", type=int, default=0, help="Time offset in minutes (how many minutes ago the window ends)")
-    parser.add_argument("--device_type", type=str, default=None, help="Target Source Device/IP")
-    parser.add_argument("--simulation", action="store_true", help="Use Industry-Grade Simulation Engine (v2)")
-    
-    # New Pattern Args
-    parser.add_argument("--pattern", type=str, help="Path to YAML pattern file")
-    parser.add_argument("--count", type=int, default=1, help="Number of pattern events to generate")
-    
+    parser.add_argument("--categories", nargs="+", help="List of device categories (e.g. Router Printer)")
     args = parser.parse_args()
     
-    if args.seed is not None:
-        random.seed(args.seed)
-        print(f"[-] Random seed set to: {args.seed}")
-    
-    # Time Window Calculation
-    end_time = datetime.now() - timedelta(minutes=args.offset)
-    start_time = end_time - timedelta(minutes=60) # Default 1 hour window
-    duration = 1
-
     gen = TrafficGenerator(args.config)
     
-    if args.simulation:
-        print("[-] Running with Industry-Grade Simulation Engine (v2)...")
-        from simulation_engine import SimulationEngine
-        
-        # Initialize Engine
-        sim_engine = SimulationEngine(gen.config, gen.loader if gen.use_dataset else None)
-        
-        # Run Simulation
-        # Use args.offset to determine start time
-        sim_end_time = datetime.now() - timedelta(minutes=args.offset)
-        sim_start_time = sim_end_time - timedelta(hours=1) # Default 1 hour
-        
-        generated_logs = list(sim_engine.run(sim_start_time, duration_hours=1))
-        
-        print(f"[-] Engine produced {len(generated_logs)} validated logs.")
-        
-        # Write Output
-        # Sort
-        generated_logs.sort(key=lambda x: x["timestamp"])
-        
-        # Write
-        gen.writer.write_csv(generated_logs)
-        gen.writer.write_json(generated_logs, "simulated_fortigate_logs")
-        
-        # Format for .log file (Raw FortiGate)
-        # Note: SimulationEngine produces logs with correct schema keys.
-        # FortiLogBuilder expects specific keys. simulation_engine.py:NormalWebRequest produces keys like 'devname', 'devid' which match.
-        # So we can just pass them to builder.
-        
-        final_logs = [gen.formatter.build_log_entry(log) for log in generated_logs]
-        gen.writer.write_raw(final_logs, gen.formatter)
-        
-        print("[+] Simulation v2 complete.")
-        sys.exit(0)
-
-    # 1. Pattern Mode
-    pattern_logs = []
-    if args.pattern:
-        pattern_logs = gen.generate_from_pattern(args.pattern, args.count)
-            
-    # 2. Classic Granular/Baseline Mode
-    baseline_logs = []
-    
-    # Check if any granular/baseline args are set
-    is_granular = args.baseline or args.ssh or args.dns or args.beacon or args.http or args.dns_normal or args.ssh_normal
-    
-    if is_granular:
-        if args.baseline:
-             baseline_logs.extend(gen.generate_baseline(start_time, duration))
-             
-        if args.http:
-             svc = {"port": 443, "name": "https", "proto": 6}
-             for _ in range(args.http): baseline_logs.append(gen._generate_single_log(svc, start_time, duration))
-        
-        if args.dns_normal:
-             svc = {"port": 53, "name": "DNS", "proto": 17}
-             for _ in range(args.dns_normal): baseline_logs.append(gen._generate_single_log(svc, start_time, duration))
-
-        if args.ssh_normal:
-             svc = {"port": 22, "name": "SSH", "proto": 6}
-             for _ in range(args.ssh_normal): baseline_logs.append(gen._generate_single_log(svc, start_time, duration))
-
-        if args.ssh:
-             # Legacy Attack call
-             baseline_logs.extend(gen.attacker.generate_iot_bruteforce(start_time, duration))
-        if args.dns:
-             baseline_logs.extend(gen.attacker.generate_dns_tunneling(start_time, duration))
-        if args.beacon:
-             baseline_logs.extend(gen.attacker.generate_beaconing(start_time, duration))
-        
-    # Combine
-    all_logs = pattern_logs + baseline_logs
-    
-    if all_logs:
-        # Sort by timestamp to mix them naturally
-        all_logs.sort(key=lambda x: x['timestamp'])
-        
-        # Write to JSON
-        gen.writer.write_json(all_logs, "simulated_fortigate_logs")
-        
-        # Write to CSV
-        gen.writer.write_csv(all_logs)
-        
-        # Write Raw
-        final_logs = [gen.formatter.build_log_entry(log) for log in all_logs]
-        gen.writer.write_raw(final_logs, gen.formatter)
-        
-        print(f"[+] Total logs generated: {len(all_logs)} ({len(pattern_logs)} pattern, {len(baseline_logs)} baseline)")
+    # If any specific counts are provided, use granular mode
+    if args.baseline or args.ssh or args.dns or args.beacon:
+        granular_counts = {
+            "baseline": args.baseline,
+            "ssh": args.ssh,
+            "dns": args.dns,
+            "beacon": args.beacon
+        }
+        gen.run(granular_counts, device_categories=args.categories)
     else:
-        # If run() was called safely or nothing happened
-        if not args.pattern and not is_granular:
-             gen.run(time_offset_mins=args.offset)
+        gen.run(device_categories=args.categories)
