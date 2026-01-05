@@ -21,10 +21,13 @@ class LogIngestor:
                      # Handle JSONL
                      raw_logs = [json.loads(line) for line in content.splitlines() if line.strip()]
 
+            print(f"[*] Parsed {len(raw_logs)} raw logs from JSON.")
             for raw in raw_logs:
                 normalized = self.normalize_log(raw)
                 if normalized:
                     normalized_logs.append(normalized)
+                else:
+                    print(f"[!] Normalization failed for a log.")
                     
             return normalized_logs
 
@@ -41,7 +44,10 @@ class LogIngestor:
         Standard Schema: timestamp, src_ip, dst_ip, device_type, protocol, action, dns_qname
         """
         try:
-            ts_str = raw_log.get('timestamp') or raw_log.get('date') + " " + raw_log.get('time', '00:00:00')
+            ts_str = raw_log.get('timestamp_iso') or raw_log.get('timestamp')
+            if not ts_str:
+                ts_str = f"{raw_log.get('date')} {raw_log.get('time')}"
+            
             try:
                 timestamp = parser.parse(ts_str)
             except:
@@ -49,12 +55,22 @@ class LogIngestor:
 
             return {
                 "timestamp": timestamp,
-                "src_ip": raw_log.get('srcip', '0.0.0.0'),
-                "dst_ip": raw_log.get('dstip', '0.0.0.0'),
-                "device_type": raw_log.get('device_type') or raw_log.get('devid', 'unknown'),
-                "protocol": (raw_log.get('service') or raw_log.get('proto') or 'unknown').lower(),
-                "action": raw_log.get('action', 'unknown'),
-                "dns_qname": raw_log.get('qname'), # specialized field for DNS logs
+                "src_ip": raw_log.get('srcip'),
+                "dst_ip": raw_log.get('dstip'),
+                "src_port": raw_log.get('srcport'),
+                "dst_port": raw_log.get('dstport'),
+                "protocol": raw_log.get('proto'),
+                "service": raw_log.get('service'),
+                "action": raw_log.get('action'),
+                "policyid": raw_log.get('policyid'),
+                "sentbyte": raw_log.get('sentbyte'),
+                "rcvdbyte": raw_log.get('rcvdbyte'),
+                "duration": raw_log.get('duration'),
+                "user": raw_log.get('user'),
+                "device_type": raw_log.get('device_type'),
+                "level": raw_log.get('level'),
+                "logid": raw_log.get('logid'),
+                "qname": raw_log.get('qname'),
                 "raw_log": json.dumps(raw_log)
             }
         except Exception as e:

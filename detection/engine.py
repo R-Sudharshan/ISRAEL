@@ -23,13 +23,19 @@ def run_detection_pipeline(log_entry):
     config = load_detection_config()
 
     # 1. DNS Detection
-    if log_entry.get('protocol') == 'dns' and log_entry.get('dns_qname'):
-        dns_alert = detect_dns_tunneling(log_entry['dns_qname'], config.get('dns', {}))
+    # Check for UDP (17) or DNS service or Port 53
+    proto = str(log_entry.get('protocol', '')).lower()
+    svc = str(log_entry.get('service', '')).lower()
+    port = str(log_entry.get('dst_port', ''))
+    
+    if (proto == '17' or 'dns' in svc or port == '53') and log_entry.get('qname'):
+        dns_alert = detect_dns_tunneling(log_entry['qname'], config.get('dns', {}))
         if dns_alert:
             alerts_found.append(dns_alert)
 
     # 2. SSH Detection
-    if log_entry.get('protocol') == 'ssh':
+    # Check for TCP (6) AND (SSH service OR Port 22)
+    if (proto == '6' or proto == 'tcp') and ('ssh' in svc or port == '22'):
         ssh_alert = detect_ssh_abuse(log_entry, config.get('ssh', {}))
         if ssh_alert:
             alerts_found.append(ssh_alert)

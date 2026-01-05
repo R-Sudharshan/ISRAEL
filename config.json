@@ -81,6 +81,11 @@
       }
     ]
   },
+  "dataset": {
+    "enabled": true,
+    "path": "dataset",
+    "use_real_ips_as_source": true
+  },
   "detection_rules": {
     "ssh": {
       "check_iot_types": true,

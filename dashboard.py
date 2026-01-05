@@ -5,6 +5,10 @@ import plotly.graph_objects as go
 from api.db import get_db_connection
 import datetime
 import time
+import warnings
+
+# Use specific warning filter for the pandas SQL alchemy warning
+warnings.filterwarnings('ignore', category=UserWarning, module='pandas')
 
 # --- 1. PAGE CONFIGURATION ---
 st.set_page_config(
@@ -98,130 +102,148 @@ if not st.session_state.logged_in:
     
     st.stop()
 
-# --- 2. CUSTOM CSS (ENTERPRISE WHITE THEME) ---
+# --- 2. CUSTOM CSS (MICROSOFT XDR STYLE) ---
 st.markdown("""
 <style>
-    /* Global Background - Professional White Theme */
+    @import url('https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;600&display=swap');
+
+    /* Microsoft Office/Defender Primary Palette */
+    :root {
+        --ms-primary: #0078d4;
+        --ms-bg-main: #faf9f8;
+        --ms-bg-card: #ffffff;
+        --ms-border: #edebe9;
+        --ms-text-main: #323130;
+        --ms-text-sec: #605e5c;
+        --ms-neutral-light: #f3f2f1;
+        --ms-red: #d13438;
+        --ms-orange: #ca5010;
+        --ms-green: #107c10;
+    }
+
+    /* Global Settings */
     .stApp {
-        background-color: #f6f8fa; /* Light Gray Background */
-        color: #24292f;            /* Dark Gray Text */
-        font-family: 'Segoe UI', 'Roboto', sans-serif;
+        background-color: var(--ms-bg-main);
+        color: var(--ms-text-main);
+        font-family: 'Segoe UI', wf_segoe-ui_normal, helvetica, arial, sans-serif;
     }
     
-    /* Technical Density: Reset Streamlit Padding */
     .block-container {
-        padding: 4rem 1rem 1.5rem 1rem !important;
+        padding: 2rem 2rem 1.5rem 2rem !important;
         max-width: 100%;
     }
     
-    /* Typography: High Contrast */
+    /* Typography */
     h1, h2, h3, h4, h5, h6 {
-        color: #24292f !important;
+        color: var(--ms-text-main) !important;
         font-weight: 600 !important;
-        margin-bottom: 0.5rem !important;
+        margin-bottom: 0.8rem !important;
     }
     
-    /* Sidebar: Clean Light Navigation */
+    /* Sidebar: Microsoft Portal Look */
     [data-testid="stSidebar"] {
-        background-color: #ffffff;
-        border-right: 1px solid #d0d7de;
+        background-color: var(--ms-bg-main);
+        border-right: 1px solid var(--ms-border);
     }
     [data-testid="stSidebar"] * {
-        color: #57606a !important; /* Secondary Text */
+        color: var(--ms-text-main) !important;
     }
     
-    /* The "Module" Container - Clean White on Light Gray */
+    /* The XDR Module Container */
     .dashboard-module {
-        background-color: #ffffff;
-        border: 1px solid #d0d7de;
-        padding: 12px;
-        margin-bottom: 12px;
-        color: #24292f;
-        box-shadow: 0 1px 3px rgba(31,35,40,0.04);
+        background-color: var(--ms-bg-card);
+        border: 1px solid var(--ms-border);
+        padding: 16px;
+        margin-bottom: 16px;
+        border-radius: 2px; /* Microsoft flat design */
+        box-shadow: 0 1.6px 3.6px 0 rgba(0,0,0,0.132), 0 0.3px 0.9px 0 rgba(0,0,0,0.108);
     }
-    
-    .module-sharp { border-radius: 2px; }
-    .module-soft { border-radius: 6px; }
-    .module-round { border-radius: 10px; }
 
     .module-header {
-        font-size: 12px;
+        font-size: 14px;
         font-weight: 600;
-        text-transform: uppercase;
-        color: #57606a;
-        border-bottom: 1px solid #d0d7de;
-        padding-bottom: 6px;
-        margin-bottom: 10px;
+        color: var(--ms-text-main);
+        padding-bottom: 8px;
+        margin-bottom: 12px;
+        border-bottom: 1px solid var(--ms-border);
         display: flex;
         justify-content: space-between;
+        align-items: center;
     }
     
     .data-row {
         display: flex;
         justify-content: space-between;
-        font-size: 12px;
-        padding: 4px 0;
-        border-bottom: 1px solid #f6f8fa;
-        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 13px;
+        padding: 6px 0;
+        border-bottom: 1px solid var(--ms-neutral-light);
     }
-    .data-label { color: #57606a; }
-    .data-val { color: #0969da; font-weight: 500; } /* Professional Blue */
+    .data-label { color: var(--ms-text-sec); }
+    .data-val { color: var(--ms-primary); font-weight: 500; }
     
+    /* defender severity pills */
     .status-pill {
-        padding: 2px 8px;
-        font-size: 10px;
+        padding: 2px 10px;
+        font-size: 11px;
         font-weight: 600;
-        border-radius: 12px;
+        border-radius: 2px;
     }
-    .status-ok { background: #dafbe1; color: #1a7f37; border: 1px solid #1a7f37; }
-    .status-warn { background: #fff8c5; color: #9a6700; border: 1px solid #9a6700; }
-    .status-crit { background: #ffebe9; color: #cf222e; border: 1px solid #cf222e; }
+    .status-ok { background: #dff6dd; color: #107c10; border: 1px solid #107c10; }
+    .status-warn { background: #fff4ce; color: #ca5010; border: 1px solid #ca5010; }
+    .status-crit { background: #fde7e9; color: #d13438; border: 1px solid #d13438; }
 
     .top-header {
-        font-size: 20px;
-        color: #24292f;
-        font-weight: 700;
-        margin-bottom: 15px;
-        letter-spacing: -0.5px;
+        font-size: 24px;
+        color: var(--ms-text-main);
+        font-weight: 400; /* Microsoft headers are often lighter weight at large sizes */
+        margin-bottom: 20px;
+        border-bottom: 1px solid var(--ms-border);
+        padding-bottom: 10px;
     }
 
-    .terminal-mono, .terminal-text {
+    .terminal-mono {
         font-family: 'Consolas', 'Monaco', monospace;
-        font-size: 11px;
-        color: #57606a;
+        font-size: 12px;
+        color: var(--ms-text-sec);
+        background: var(--ms-neutral-light);
+        padding: 2px 4px;
+        border-radius: 2px;
     }
 
-    /* Streamlit Button Overrides for Light Theme */
-    .stButton>button {
-        border-radius: 6px !important;
-        font-size: 12px !important;
-        font-weight: 500 !important;
-    }
-    /* Primary Button: Professional Blue */
+    /* Primary Microsoft Button */
     button[data-testid="baseButton-primary"] {
-        background-color: #0969da !important;
-        border: 1px solid #0969da !important;
+        background-color: var(--ms-primary) !important;
+        border: 1px solid var(--ms-primary) !important;
         color: #ffffff !important;
+        border-radius: 2px !important;
     }
     button[data-testid="baseButton-primary"]:hover {
-        background-color: #0550ae !important;
-        border-color: #0550ae !important;
+        background-color: #005a9e !important;
+        border-color: #005a9e !important;
     }
-    /* Secondary Button: Clean Gray */
+    
+    /* Secondary Button */
     button[data-testid="baseButton-secondary"] {
         background-color: #ffffff !important;
-        color: #24292f !important;
-        border: 1px solid #d0d7de !important;
+        color: var(--ms-text-main) !important;
+        border: 1px solid #8a8886 !important;
+        border-radius: 2px !important;
     }
     button[data-testid="baseButton-secondary"]:hover {
-        background-color: #f6f8fa !important;
-        border-color: #afb8c1 !important;
+        background-color: var(--ms-neutral-light) !important;
+        border-color: #605e5c !important;
+    }
+
+    /* Active Nav Item Indicator */
+    .nav-active {
+        border-left: 4px solid var(--ms-primary) !important;
+        background-color: var(--ms-neutral-light) !important;
     }
 </style>
 """, unsafe_allow_html=True)
 
 # --- 3. DATA FETCHING ---
-@st.cache_data(ttl=5) # Reduced TTL for faster updates
+# @st.cache_data(ttl=5) # REMOVED: Caching causes staleness issues with rapid generation
 def get_dashboard_data():
     conn = get_db_connection()
     try:
@@ -323,10 +345,9 @@ with st.sidebar:
     
     # Navigation styling helper
     def nav_button(label, page_name, active=False):
-        bg = "#e84118" if active else "transparent"
-        text = "white"
-        # We use a native streamlit button, but we might lose the exact custom HTML styling 
-        # unless we get creative. To keep it simple and functional while looking close:
+        # We use st.button but add a helper to simulate the Microsoft vertical accent
+        # Actually, since we can't easily add classes to specific st.buttons,
+        # we will use the 'primary' type for active buttons which we styled to look like Microsoft selection.
         if st.button(label, key=label, use_container_width=True, type="primary" if active else "secondary"):
             set_page(page_name)
             st.rerun()
@@ -392,10 +413,20 @@ with st.sidebar:
     st.markdown("---")
     st.caption("Advanced Precision Simulator")
     with st.expander("Granular Controls", expanded=False):
-        b_count = st.number_input("Baseline Logs", 0, 10000, 10)
+        st.markdown("**Attack Vectors**")
         s_count = st.number_input("SSH Attacks", 0, 1000, 0)
         d_count = st.number_input("DNS Attacks", 0, 1000, 0)
         bc_count = st.number_input("Beacons", 0, 1000, 0)
+        
+        st.markdown("**Normal Baseline**")
+        b_count = st.number_input("Mixed Standard (Legacy)", 0, 10000, 0)
+        http_count = st.number_input("Normal Web Browsing (HTTP/S)", 0, 10000, 10)
+        dns_norm_count = st.number_input("Normal DNS Queries", 0, 10000, 0)
+        ssh_norm_count = st.number_input("Normal SSH Admin", 0, 10000, 0)
+        
+        st.markdown("**Timing**")
+        offset_mins = st.number_input("Time Offset (minutes ago)", 0, 10000, 0, help="Shift the entire simulation window into the past.")
+        
         clear_on_prec = st.checkbox("Clear DB before injection", value=True)
         
         if st.button("INJECT PRECISION TRAFFIC", use_container_width=True):
@@ -415,7 +446,11 @@ with st.sidebar:
                            "--baseline", str(b_count),
                            "--ssh", str(s_count),
                            "--dns", str(d_count),
-                           "--beacon", str(bc_count)]
+                           "--beacon", str(bc_count),
+                           "--http", str(http_count),
+                           "--dns_normal", str(dns_norm_count),
+                           "--ssh_normal", str(ssh_norm_count),
+                           "--offset", str(offset_mins)]
                     
                     st.write(f"Executing: {' '.join(cmd)}")
                     gen = subprocess.run(cmd, capture_output=True, text=True)
@@ -530,39 +565,65 @@ if st.session_state.page == "Security Fabric":
         if not df_alerts.empty:
             for _, row in df_alerts.head(15).iterrows():
                 ts = str(row['timestamp']).split('.')[0]
-                risk_style = "color: #cf222e; font-weight: bold;" if "critical" in str(row.get('comments', '')).lower() or "tunneling" in row['detection_type'].lower() else "color: #9a6700; font-weight: bold;"
+                # Microsoft XDR color logic
+                sev_color = "#d13438" if "critical" in str(row.get('severity', '')).lower() or "tunneling" in row['detection_type'].lower() else "#ca5010"
                 
-                alert_entries_html += f'<div style="margin-bottom: 8px; border-left: 2px solid #d0d7de; padding-left: 10px; font-family: monospace;"><div style="font-size: 10px; color: #57606a;">[{ts}]</div><div style="font-size: 11px;"><span style="{risk_style}">{row["detection_type"].upper()}</span></div><div style="font-size: 10px; color: #24292f;">SRC: <span style="color: #0969da;">{row["src_ip"]}</span> | <span style="font-style: italic;">{row.get("mitre_technique", "N/A")}</span></div></div>'
+                alert_entries_html += f'<div style="margin-bottom: 12px; border-left: 3px solid {sev_color}; padding-left: 12px;"><div style="font-size: 11px; color: #605e5c;">{ts}</div><div style="font-size: 13px; font-weight: 600; color: #323130;">{row["detection_type"]}</div><div style="font-size: 11px; color: #605e5c;">{row["src_ip"]} | {row.get("mitre_technique", "N/A")}</div></div>'
         else:
             alert_entries_html = '<div class="terminal-text" style="text-align: center; margin-top: 100px; opacity: 0.5;">NO THREATS DETECTED</div>'
 
         st.markdown(f"""
-<div class="dashboard-card" style="height: 350px; background-color: #ffffff; border: 1px solid #d0d7de; border-top: 3px solid {sec_color}; padding: 0px; overflow: hidden; border-radius: 6px;">
-    <div style="background: {sec_bg}; padding: 8px 15px; color: {sec_color} !important; font-family: monospace; font-size: 11px; display: flex; justify-content: space-between; border-bottom: 1px solid #d0d7de;">
-        <span style="color: {sec_color} !important;">>_ ALERT_TELEMETRY</span>
-        <span style="color: {sec_color}; font-weight:bold;">SEC_LEVEL: {sec_label}</span>
+<div class="dashboard-module" style="height: 350px; border-top: 4px solid {sec_color}; padding: 0px; overflow: hidden;">
+    <div style="background: #ffffff; padding: 10px 16px; color: #323130; font-size: 14px; font-weight: 600; border-bottom: 1px solid #edebe9; display: flex; justify-content: space-between;">
+        <span>Alerts and incidents</span>
+        <span style="color: {sec_color}; font-size: 11px;">{sec_label}</span>
     </div>
-    <div style="height: 310px; overflow-y: auto; padding: 15px; font-family: 'Consolas', 'Monaco', monospace; font-size: 11px; color: #24292f; line-height: 1.4;">
+    <div style="height: 310px; overflow-y: auto; padding: 16px;">
 {alert_entries_html}
     </div>
 </div>
 """, unsafe_allow_html=True)
     with live_col1:
+        # Download Controls
+        if not df_logs.empty:
+            d_col1, d_col2, d_col3 = st.columns([1, 1, 4])
+            csv_data = df_logs.to_csv(index=False).encode('utf-8')
+            json_data = df_logs.to_json(orient="records", date_format="iso")
+            
+            with d_col1:
+                st.download_button(
+                    label="Download CSV",
+                    data=csv_data,
+                    file_name=f"log_export_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                    mime="text/csv",
+                    key="dl_csv"
+                )
+            with d_col2:
+                st.download_button(
+                    label="Download JSON",
+                    data=json_data,
+                    file_name=f"log_export_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                    mime="application/json",
+                    key="dl_json"
+                )
+
         log_entries_html = ""
         if not df_logs.empty:
             for _, row in df_logs.head(20).iterrows():
                 ts = str(row['timestamp']).split('.')[0]
                 action_style = "color: #cf222e !important; font-weight: bold;" if row['action'] == 'deny' else "color: #1a7f37 !important; font-weight: bold;"
+                svc_display = f"{row['service']}({row['dst_port']})" if row['service'] else row['protocol']
                 
-                log_entries_html += f'<div style="margin-bottom: 4px; border-left: 2px solid #d0d7de; padding-left: 10px; font-family: monospace;"><span style="color:#57606a;">[{ts}]</span> <span style="color:#24292f;">{row["protocol"]}</span> <span style="color:#0969da;">{row["src_ip"]}</span> <span style="color:#57606a;">→</span> <span style="color:#0969da;">{row["dst_ip"]}</span> <span style="{action_style}">[{row["action"].upper()}]</span></div>'
+                log_entries_html += f'<div style="margin-bottom: 4px; border-left: 2px solid #d0d7de; padding-left: 10px; font-family: monospace;"><span style="color:#57606a;">[{ts}]</span> <span style="color:#24292f;">{svc_display}</span> <span style="color:#0969da;">{row["src_ip"]}</span>:<span style="color:#57606a;">{row["src_port"]}</span> <span style="color:#57606a;">→</span> <span style="color:#0969da;">{row["dst_ip"]}</span> <span style="{action_style}">[{row["action"].upper()}]</span></div>'
         else:
             log_entries_html = '<div class="terminal-text" style="text-align: center; margin-top: 100px; opacity: 0.5;">WAITING FOR TELEMETRY DATA...</div>'
 
         st.markdown(f"""
+
 <div class="dashboard-card" style="height: 350px; background-color: #ffffff; border: 1px solid #d0d7de; border-top: 3px solid #0969da; padding: 0px; overflow: hidden; border-radius: 6px;">
     <div style="background: #f6f8fa; padding: 8px 15px; color: #57606a !important; font-family: monospace; font-size: 11px; display: flex; justify-content: space-between; border-bottom: 1px solid #d0d7de;">
-        <span style="color: #57606a !important;">>_ LIVE_LOG_STREAM</span>
-        <span style="color: #1a7f37; font-weight:bold;">LIVE</span>
+        <span style="color: #57606a !important;">LIVE LOGS (LATEST 20)</span>
+        <span style="color: #1a7f37; font-weight:bold;">ACTIVE</span>
     </div>
     <div style="height: 310px; overflow-y: auto; padding: 15px; font-family: 'Consolas', 'Monaco', monospace; font-size: 11px; color: #24292f; line-height: 1.6;">
 {log_entries_html}
@@ -594,60 +655,27 @@ if st.session_state.page == "Security Fabric":
     else:
         st.markdown('<div class="dashboard-module module-sharp" style="text-align:center; padding:40px;">[CLEANSET] No active threats in inventory.</div>', unsafe_allow_html=True)
 
-    # ROW 2: System Info | Engine Stats | Suspicious Activity
-    col1, col2, col3 = st.columns(3)
-
-    if not df_logs.empty:
-        first_log_time = pd.to_datetime(df_logs['timestamp']).min()
-        uptime_delta = datetime.datetime.now() - first_log_time
-        uptime_str = str(uptime_delta).split('.')[0]
+    # ROW 2: Suspicious Activity (Now standalone)
+    if not df_alerts.empty:
+        ssh_attacks = len(df_alerts[df_alerts['detection_type'].str.contains('SSH', case=False)])
+        dns_tunnels = len(df_alerts[df_alerts['detection_type'].str.contains('DNS', case=False)])
+        blocked_ips = df_alerts['src_ip'].nunique()
     else:
-        uptime_str = "0:00:00"
+        ssh_attacks = 0; dns_tunnels = 0; blocked_ips = 0
 
-    with col1:
-        st.markdown(f"""
-        <div class="dashboard-module module-soft">
-            <div class="module-header">SYSTEM INFORMATION</div>
-            <div class="data-row"><span class="data-label">Host</span><span class="data-val">SOC_ENGINE_ALPHA</span></div>
-            <div class="data-row"><span class="data-label">SN</span><span class="data-val">FGT60F-SIM-5521</span></div>
-            <div class="data-row"><span class="data-label">CPU/RAM</span><span class="data-val">{dash_stats.get('cpu_usage', 0):.1f}% / {dash_stats.get('ram_usage', 0):.1f}%</span></div>
-            <div class="data-row"><span class="data-label">Sessions</span><span class="data-val">{dash_stats.get('active_sessions', 0)}</span></div>
-            <div class="data-row"><span class="data-label">Uptime</span><span class="data-val">{uptime_str}</span></div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col2:
-        st.markdown(f"""
-        <div class="dashboard-module module-soft">
-            <div class="module-header">SECURITY ENGINE STATS</div>
-            <div class="data-row"><span class="data-label">Throughput</span><span class="data-val">{dash_stats.get('throughput_kbps', 0):.1f} Kbps</span></div>
-            <div class="data-row"><span class="data-label">Processed</span><span class="data-val">{(dash_stats.get('total_bytes', 0)/1024/1024):.2f} MB</span></div>
-            <div class="data-row"><span class="data-label">Active Users</span><span class="data-val">{dash_stats.get('active_users', 0)}</span></div>
-            <div class="data-row"><span class="data-label">Policies</span><span class="data-val">{dash_stats.get('active_policies', 0)}</span></div>
-            <div class="data-row"><span class="data-label">IPS Engine</span><span class="data-val" style="color:#238636;">ACTIVE</span></div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col3:
-        if not df_alerts.empty:
-            ssh_attacks = len(df_alerts[df_alerts['detection_type'].str.contains('SSH', case=False)])
-            dns_tunnels = len(df_alerts[df_alerts['detection_type'].str.contains('DNS', case=False)])
-            blocked_ips = df_alerts['src_ip'].nunique()
-        else:
-            ssh_attacks = 0; dns_tunnels = 0; blocked_ips = 0
-
-        st.markdown(f"""
-        <div class="dashboard-module module-soft">
-            <div class="module-header">SUSPICIOUS ACTIVITY</div>
-            <div class="data-row"><span class="data-label">SSH Brute Force</span><span class="data-val" style="color:#f85149;">{ssh_attacks}</span></div>
-            <div class="data-row"><span class="data-label">DNS Tunneling</span><span class="data-val" style="color:#f85149;">{dns_tunnels}</span></div>
-            <div class="data-row"><span class="data-label">Unique Sources</span><span class="data-val">{blocked_ips}</span></div>
-            <div class="data-row" style="border-top: 1px solid #30363d; margin-top:5px; padding-top:8px;">
-                <span class="data-label" style="font-weight:bold;">TOTAL THREATS</span>
-                <span class="data-val" style="color:#f85149; font-size:14px;">{len(df_alerts)}</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+    c1, c2, c3 = st.columns([1,1,2])
+    with c1:
+        st.metric("Total Threats", len(df_alerts), delta_color="inverse")
+    with c2:
+        st.metric("Unique Sources", blocked_ips, delta_color="inverse")
+    
+    st.markdown(f"""
+    <div class="dashboard-module module-soft">
+        <div class="module-header">OFFENSE SUMMARY</div>
+        <div class="data-row"><span class="data-label">SSH Brute Force</span><span class="data-val" style="color:#f85149;">{ssh_attacks}</span></div>
+        <div class="data-row"><span class="data-label">DNS Tunneling</span><span class="data-val" style="color:#f85149;">{dns_tunnels}</span></div>
+    </div>
+    """, unsafe_allow_html=True)
 
     # End of Security Fabric Page
 
@@ -657,9 +685,13 @@ elif st.session_state.page == "Network Defense":
     
     col1, col2 = st.columns(2)
     
-    # 1. IoT SSH Abuse
+    # 1. IoT SSH Abuse (Fetch dedicated attack logs)
     with col1:
-        ssh_logs = df_logs[df_logs['protocol'].str.lower() == 'ssh'] if not df_logs.empty and 'protocol' in df_logs.columns else pd.DataFrame()
+        # Specialized Query for SSH Attack History
+        conn = get_db_connection()
+        ssh_logs = pd.read_sql("SELECT * FROM logs WHERE protocol = '6' AND (service = 'SSH' OR dst_port = 22) ORDER BY timestamp DESC LIMIT 2000", conn)
+        conn.close()
+        
         ssh_alerts = df_alerts[df_alerts['detection_type'].str.contains('SSH', case=False)] if not df_alerts.empty else pd.DataFrame()
         
         if not ssh_logs.empty:
@@ -746,16 +778,16 @@ elif st.session_state.page == "Rule Tuning":
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown('<div class="dashboard-module module-soft"><div class="module-header">SSH DETECTION LOGIC</div>', unsafe_allow_html=True)
-        check_iot = st.toggle("IOT_DEVICE_IDENT", value=rules.get('ssh', {}).get('check_iot_types', True))
-        fail_check = st.toggle("AUTH_FAIL_ALERT", value=rules.get('ssh', {}).get('fail_threshold_enabled', True))
+        st.markdown('<div class="dashboard-module"><div class="module-header">SSH DETECTION LOGIC</div>', unsafe_allow_html=True)
+        check_iot = st.toggle("Analyze IoT types", value=rules.get('ssh', {}).get('check_iot_types', True))
+        fail_check = st.toggle("Alert on auth failure", value=rules.get('ssh', {}).get('fail_threshold_enabled', True))
         st.markdown('</div>', unsafe_allow_html=True)
         
     with col2:
-        st.markdown('<div class="dashboard-module module-soft"><div class="module-header">DNS TUNNELING PARAMETERS</div>', unsafe_allow_html=True)
-        entropy = st.slider("ENTROPY_THRESHOLD", 3.0, 7.0, float(rules.get('dns', {}).get('entropy_threshold', 4.5)), 0.1)
-        max_len = st.slider("MAX_SUBDOMAIN_LEN", 20, 100, int(rules.get('dns', {}).get('max_length', 50)))
-        vol_thr = st.slider("VOLUME_LIMIT", 5, 50, int(rules.get('dns', {}).get('volume_threshold', 10)))
+        st.markdown('<div class="dashboard-module"><div class="module-header">DNS TUNNELING PARAMETERS</div>', unsafe_allow_html=True)
+        entropy = st.slider("Entropy threshold", 3.0, 7.0, float(rules.get('dns', {}).get('entropy_threshold', 4.5)), 0.1)
+        max_len = st.slider("Max subdomain length", 20, 100, int(rules.get('dns', {}).get('max_length', 50)))
+        vol_thr = st.slider("Volume limits", 5, 50, int(rules.get('dns', {}).get('volume_threshold', 10)))
         st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown("---")
@@ -793,26 +825,54 @@ elif st.session_state.page == "Traffic Analysis":
         # 1. Top Metrics
         c1, c2, c3 = st.columns(3)
         with c1:
-            st.markdown(f'<div class="dashboard-module module-sharp"><div class="module-header">BANDWIDTH</div><div style="font-size:24px; font-weight:bold; color:#0969da;">{dash_stats.get("throughput_kbps", 0):.1f} <span style="font-size:12px;">Kbps</span></div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="dashboard-module"><div class="module-header">BANDWIDTH</div><div style="font-size:24px; font-weight:400; color:{dash_stats.get("throughput_kbps", 0) > 100 and "#d13438" or "#0078d4"};">{dash_stats.get("throughput_kbps", 0):.1f} <span style="font-size:14px; color:#605e5c;">Kbps</span></div></div>', unsafe_allow_html=True)
         with c2:
-            st.markdown(f'<div class="dashboard-module module-sharp"><div class="module-header">TOTAL SESSIONS</div><div style="font-size:24px; font-weight:bold; color:#24292f;">{dash_stats.get("total_logs", 0):,}</div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="dashboard-module"><div class="module-header">TOTAL SESSIONS</div><div style="font-size:24px; font-weight:400; color:#323130;">{dash_stats.get("total_logs", 0):,}</div></div>', unsafe_allow_html=True)
         with c3:
-            st.markdown(f'<div class="dashboard-module module-sharp"><div class="module-header">POLICY UTILIZATION</div><div style="font-size:24px; font-weight:bold; color:#1a7f37;">{dash_stats.get("active_policies", 0)} <span style="font-size:12px;">Rules active</span></div></div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="dashboard-module"><div class="module-header">POLICY UTILIZATION</div><div style="font-size:24px; font-weight:400; color:#107c10;">{dash_stats.get("active_policies", 0)} <span style="font-size:14px; color:#605e5c;">Active rules</span></div></div>', unsafe_allow_html=True)
 
         # 3. Raw Data
+
         st.markdown('<div class="module-header">DEEP PACKET INSPECTION (DPI) LOGS</div>', unsafe_allow_html=True)
-        cols_to_show = ['timestamp', 'src_ip', 'dst_ip', 'protocol', 'action', 'sentbyte', 'rcvdbyte', 'policyid']
-        available_cols = [c for c in cols_to_show if c in df_logs.columns]
         
-        st.dataframe(
-            df_logs[available_cols].head(100).style.set_properties(**{
-                'font-family': 'monospace', 
-                'font-size': '11px',
-                'color': '#24292f',
-                'background-color': '#ffffff'
-            }),
-            hide_index=True, use_container_width=True
-        )
+        # Prepare Alert Mapping
+        if not df_alerts.empty:
+            alert_map = df_alerts.set_index('raw_log_reference')['detection_type'].to_dict()
+            df_logs['is_threat'] = df_logs['id'].map(alert_map).notna()
+            df_logs['threat_name'] = df_logs['id'].map(alert_map).fillna('')
+        else:
+            df_logs['is_threat'] = False
+            df_logs['threat_name'] = ''
+
+        view_mode = st.radio("Log Format", ["Parsed Table", "Raw Fortigate (Key-Value)"], horizontal=True)
+        
+        if view_mode == "Parsed Table":
+            cols_to_show = ['timestamp', 'src_ip', 'dst_ip', 'protocol', 'action', 'threat_name', 'policyid', 'dstdomain']
+            available_cols = [c for c in cols_to_show if c in df_logs.columns]
+            
+            # Apply highlighting
+            def highlight_threats(row):
+                # We check 'threat_name' because 'is_threat' is not in the subset cols_to_show
+                if row.get('threat_name'):
+                    return ['background-color: #ffebe9; color: #cf222e; font-weight: bold'] * len(row)
+                return [''] * len(row)
+
+            st.dataframe(
+                df_logs[available_cols].head(100).style.apply(highlight_threats, axis=1).format({'timestamp': lambda x: str(x).split(".")[0]}),
+                hide_index=True, use_container_width=True
+            )
+        else:
+            # Raw View with Highlighting
+            raw_data = df_logs[['timestamp', 'raw_log', 'is_threat', 'threat_name']].head(50)
+            
+            st.markdown('<div class="terminal-container" style="font-family: monospace; font-size: 12px; background: #f6f8fa; padding: 10px; border: 1px solid #d0d7de; border-radius: 6px;">', unsafe_allow_html=True)
+            for _, row in raw_data.iterrows():
+                if row['is_threat']:
+                    # Red highlight for threats
+                    st.markdown(f'<div style="color: #cf222e; background-color: #ffebe9; padding: 2px 4px; margin-bottom: 2px; border-left: 3px solid #cf222e;">[ALERT: {row["threat_name"]}] {row["timestamp"]} {row["raw_log"]}</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown(f'<div style="color: #24292f; margin-bottom: 2px; padding: 2px 4px;">{row["timestamp"]} {row["raw_log"]}</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
     else:
         st.info("No baseline traffic telemetry located.")
 
@@ -822,8 +882,9 @@ elif st.session_state.page == "Asset Inventory":
         assets = df_logs.groupby(['src_ip', 'device_type']).size().reset_index(name='events')
         st.dataframe(
             assets.style.set_properties(**{
-                'color': '#24292f',
-                'background-color': '#ffffff'
+                'color': '#323130',
+                'background-color': '#ffffff',
+                'font-size': '13px'
             }),
             use_container_width=True, hide_index=True
         )
@@ -843,27 +904,27 @@ elif st.session_state.page == "Team Management":
         c1, c2 = st.columns(2)
         with c1:
             st.markdown(f"""
-            <div class="dashboard-module module-soft">
+            <div class="dashboard-module">
                 <div class="module-header">YOUR TEAM SIZE</div>
-                <div style="font-size: 32px; font-weight: bold; color: #0969da;">{len(team_members)}</div>
-                <div style="font-size: 11px; color: #57606a;">Active Analyst Accounts</div>
+                <div style="font-size: 32px; font-weight: 300; color: var(--ms-primary);">{len(team_members)}</div>
+                <div style="font-size: 12px; color: var(--ms-text-sec);">Active analyst accounts</div>
             </div>
             """, unsafe_allow_html=True)
         
         # New Analyst Form
         with c2:
-            st.markdown('<div class="dashboard-module module-soft">', unsafe_allow_html=True)
+            st.markdown('<div class="dashboard-module">', unsafe_allow_html=True)
             st.markdown('<div class="module-header">REGISTER NEW ANALYST</div>', unsafe_allow_html=True)
             with st.form("new_analyst"):
                 new_user = st.text_input("Username")
                 new_pass = st.text_input("Password", type="password")
-                if st.form_submit_button("Create Account"):
+                if st.form_submit_button("Create Account", type="primary"):
                     if AuthManager.create_user(new_user, new_pass, 'user', managed_by=st.session_state.user_id):
-                        st.success(f"Created analyst: {new_user}")
+                        st.success(f"Account created: {new_user}")
                         time.sleep(1)
                         st.rerun()
                     else:
-                        st.error("Failed. Username might be taken.")
+                        st.error("Operation failed. Username may be unavailable.")
             st.markdown('</div>', unsafe_allow_html=True)
 
         # List Team Members
@@ -886,6 +947,11 @@ elif st.session_state.page == "Team Management":
 elif st.session_state.page == "Threat Reports":
     st.markdown('<div class="top-header">Threat Intelligence Reports</div>', unsafe_allow_html=True)
     
+    # Explicitly fetch fresh full alert history for reporting
+    conn = get_db_connection()
+    df_report_alerts = pd.read_sql("SELECT * FROM alerts ORDER BY timestamp DESC", conn)
+    conn.close()
+
     # Refresh logic
     if st.button("Refresh Report Data"):
         st.cache_data.clear()
@@ -895,25 +961,25 @@ elif st.session_state.page == "Threat Reports":
     # THREAT VISUAL ANALYTICS
     # =========================
     st.markdown("""
-    <div class="dashboard-module module-soft">
+    <div class="dashboard-module">
         <div class="module-header">THREAT DISTRIBUTION OVERVIEW</div>
     """, unsafe_allow_html=True)
 
-    if not df_alerts.empty:
+    if not df_report_alerts.empty:
         c1, c2 = st.columns([2, 1])
         with c1:
-            threat_count = df_alerts['detection_type'].value_counts().reset_index()
+            threat_count = df_report_alerts['detection_type'].value_counts().reset_index()
             threat_count.columns = ["Threat Type", "Count"]
 
-            # Professional Color Palette matching the theme
-            custom_colors = ['#cf222e', '#d96c00', '#9a6700', '#0969da', '#57606a']
+            # Microsoft XDR standard high-visibility palette
+            custom_colors = ['#0078d4', '#d13438', '#ca5010', '#107c10', '#605e5c']
             
             fig = px.pie(
                 threat_count,
                 names="Threat Type",
                 values="Count",
                 title=None, 
-                hole=0.6, 
+                hole=0.55, 
                 color_discrete_sequence=custom_colors
             )
             fig.update_layout(
@@ -927,19 +993,19 @@ elif st.session_state.page == "Threat Reports":
             st.plotly_chart(fig, use_container_width=True)
         
         with c2:
-             st.markdown("#### Execution Summary")
+             st.markdown('<div style="font-size: 14px; font-weight: 600; margin-bottom: 15px;">Asset vulnerability summary</div>', unsafe_allow_html=True)
              top_threat = threat_count.iloc[0]
              
              st.markdown(f"""
-             <div style="background-color: #f6f8fa; padding: 15px; border-radius: 6px; border-left: 4px solid #cf222e;">
-                <div style="color: #57606a; font-size: 11px; text-transform: uppercase; font-weight: 600;">Primary Vector</div>
-                <div style="color: #24292f; font-size: 18px; font-weight: bold;">{top_threat['Threat Type']}</div>
-                <div style="color: #cf222e; font-size: 24px; font-weight: bold; margin-top: 5px;">{top_threat['Count']} <span style="font-size:12px; color:#57606a;">Events</span></div>
+             <div style="background-color: var(--ms-bg-main); padding: 15px; border-left: 4px solid var(--ms-red); margin-bottom: 10px;">
+                <div style="color: var(--ms-text-sec); font-size: 11px; text-transform: uppercase; font-weight: 600;">Priority Vector</div>
+                <div style="color: var(--ms-text-main); font-size: 16px; font-weight: 600;">{top_threat['Threat Type']}</div>
+                <div style="color: var(--ms-red); font-size: 24px; font-weight: 300; margin-top: 5px;">{top_threat['Count']} <span style="font-size:12px; color:var(--ms-text-sec);">Incidents</span></div>
              </div>
              
-             <div style="margin-top: 10px; background-color: #f6f8fa; padding: 15px; border-radius: 6px; border-left: 4px solid #9a6700;">
-                <div style="color: #57606a; font-size: 11px; text-transform: uppercase; font-weight: 600;">Active Campaign</div>
-                <div style="color: #24292f; font-size: 14px; font-weight: 600;">APT-29 Simulation</div>
+             <div style="background-color: var(--ms-bg-main); padding: 15px; border-left: 4px solid var(--ms-orange);">
+                <div style="color: var(--ms-text-sec); font-size: 11px; text-transform: uppercase; font-weight: 600;">Campaign Context</div>
+                <div style="color: var(--ms-text-main); font-size: 14px; font-weight: 600;">Persistence simulation</div>
              </div>
              """, unsafe_allow_html=True)
 
@@ -952,27 +1018,27 @@ elif st.session_state.page == "Threat Reports":
     # SEVERITY FILTER
     # =========================
     st.markdown("""
-    <div class="dashboard-module module-sharp" style="margin-top: 20px;">
+    <div class="dashboard-module" style="margin-top: 20px;">
         <div class="module-header">FORENSIC ALERT FILTER</div>
     """, unsafe_allow_html=True)
 
     severity = st.selectbox("Select Severity Scope", ["All","Critical","High","Medium","Low"])
 
     if severity != "All":
-        filtered_alerts = df_alerts[df_alerts["severity"].str.lower() == severity.lower()]
+        filtered_alerts = df_report_alerts[df_report_alerts["severity"].str.lower() == severity.lower()]
     else:
-        filtered_alerts = df_alerts
+        filtered_alerts = df_report_alerts
 
     if not filtered_alerts.empty:
         # Clean Table Styling
         st.dataframe(
             filtered_alerts[['timestamp','src_ip','detection_type','severity','mitre_technique']].style.apply(
-                lambda x: ['color: #cf222e; font-weight: bold;' if x.name == 'severity' and 'critical' in str(x.values).lower() else '' for i in x], axis=1
+                lambda x: ['color: var(--ms-red); font-weight: 600;' if x.name == 'severity' and 'critical' in str(x.values).lower() else '' for i in x], axis=1
             ).set_properties(**{
-                'font-family': 'monospace',
-                'font-size': '11px', 
+                'font-family': 'Segoe UI',
+                'font-size': '13px', 
                 'background-color': '#ffffff',
-                'color': '#57606a'
+                'color': '#323130'
             }),
             use_container_width=True,
             hide_index=True
@@ -987,13 +1053,13 @@ elif st.session_state.page == "Threat Reports":
     # MITRE SUMMARY
     # =========================
     st.markdown("""
-    <div class="dashboard-module module-round" style="margin-top: 20px;">
+    <div class="dashboard-module" style="margin-top: 20px;">
         <div class="module-header">MITRE ATT&CK MATRIX MAPPING</div>
     """, unsafe_allow_html=True)
 
-    if not df_alerts.empty:
+    if not df_report_alerts.empty:
         mitre_table = (
-            df_alerts.groupby("mitre_technique")
+            df_report_alerts.groupby("mitre_technique")
             .size()
             .reset_index(name="Count")
             .sort_values(by="Count", ascending=False)
