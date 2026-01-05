@@ -1,0 +1,95 @@
+attack:
+  name: cross_site_scripting
+  short_name: xss
+  category: web
+  owasp:
+    - A03:2021-Injection
+  severity: high
+
+preconditions:
+  application_type:
+    - web_app
+  protocol:
+    - http
+    - https
+  logging_required:
+    - web_access_logs
+    - application_logs
+
+event_sequence:
+  type: burst
+  description: Multiple payload variations targeting the same endpoint
+  min_events: 3
+  max_events: 12
+  time_window_seconds: 90
+
+entry_points:
+  methods:
+    - GET
+    - POST
+  parameters:
+    - search
+    - q
+    - comment
+    - username
+    - message
+    - feedback
+
+payloads:
+  reflected:
+    examples:
+      - "<script>alert(1)</script>"
+      - "\"><script>alert(document.cookie)</script>"
+  event_handler:
+    examples:
+      - "<img src=x onerror=alert(1)>"
+      - "<svg onload=alert(1)>"
+  encoded:
+    examples:
+      - "%3Cscript%3Ealert(1)%3C/script%3E"
+      - "&lt;script&gt;alert(1)&lt;/script&gt;"
+
+log_fields:
+  timestamp: auto
+  source_ip: random_external
+  destination_ip: web_server
+  http_method: from_entry_points
+  uri:
+    patterns:
+      - "/search"
+      - "/login"
+      - "/comment"
+      - "/feedback"
+  query_parameter:
+    name: from_entry_points.parameters
+    value: from_payloads
+  user_agent:
+    values:
+      - "Mozilla/5.0"
+      - "sqlmap/1.7"
+      - "curl/7.88.1"
+  response_code:
+    values:
+      - 200
+      - 403
+      - 500
+
+noise:
+  before_attack:
+    normal_requests: 15
+  after_attack:
+    normal_requests: 10
+
+sigma_mapping:
+  logsource:
+    category: webserver
+  match_conditions:
+    fields:
+      - uri
+      - query_parameter.value
+    keywords:
+      - "<script"
+      - "onerror="
+      - "onload="
+      - "alert("
+      - "%3Cscript"

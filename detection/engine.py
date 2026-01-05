@@ -40,6 +40,51 @@ def run_detection_pipeline(log_entry):
         if ssh_alert:
             alerts_found.append(ssh_alert)
 
+    # 3. Generic Keyword Detection (Web / Database / Shell)
+    # Checks 'msg' or 'raw_log' for common attack signatures
+    import re
+    content = str(log_entry.get('msg', '')) + " " + str(log_entry.get('raw_log', ''))
+    
+    # SQL Injection via Regex (Handles newlines and multiple spaces)
+    # detecting: select *, drop table, union select, truncate table, delete from
+    if re.search(r"select\s+\*", content, re.IGNORECASE) or \
+       re.search(r"drop\s+table", content, re.IGNORECASE) or \
+       re.search(r"union\s+select", content, re.IGNORECASE) or \
+       re.search(r"truncate\s+table", content, re.IGNORECASE) or \
+       re.search(r"delete\s+from", content, re.IGNORECASE):
+        alerts_found.append({
+            "type": "SQL Injection Attempt",
+            "severity": "high",
+            "mitre_tactic": "Initial Access",
+            "mitre_technique": "T1190",
+            "indicators": "Suspicious SQL patterns detected (Regex Match)"
+        })
+        
+    # XSS / Web Injection
+    # detecting: <script>, alert(...), onerror=, onload=, and URL encoded variants (%3Cscript)
+    if re.search(r"<script", content, re.IGNORECASE) or \
+       re.search(r"%3Cscript", content, re.IGNORECASE) or \
+       re.search(r"alert\s*\(", content, re.IGNORECASE) or \
+       re.search(r"on\w+\s*=", content, re.IGNORECASE) or \
+       re.search(r"javascript:", content, re.IGNORECASE):
+        alerts_found.append({
+            "type": "Cross-Site Scripting (XSS)",
+            "severity": "medium",
+            "mitre_tactic": "Initial Access",
+            "mitre_technique": "T1190",
+            "indicators": "XSS payload detected (Regex Match)"
+        })
+        
+    # Path Traversal
+    if re.search(r"\.\.[/|\\]", content) or "/etc/passwd" in content:
+        alerts_found.append({
+            "type": "Directory Traversal",
+            "severity": "high",
+            "mitre_tactic": "Initial Access",
+            "mitre_technique": "T1190",
+            "indicators": "Path traversal sequence detected"
+        })
+
     return alerts_found
 
 def format_alert_object(detection_result, log_entry, log_id):

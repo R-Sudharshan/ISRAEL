@@ -39,7 +39,7 @@ class AttackSimulator:
         offset_seconds = random.randint(0, duration_hours * 3600)
         return base_time + timedelta(seconds=offset_seconds)
 
-    def generate_iot_bruteforce(self, start_time: datetime, duration_hours: int) -> List[Dict[str, Any]]:
+    def generate_iot_bruteforce(self, start_time: datetime, duration_hours: int, src_ip_override: str = None) -> List[Dict[str, Any]]:
         if not self.iot_config["enabled"]:
             return []
             
@@ -52,13 +52,11 @@ class AttackSimulator:
         victim_idx = random.randint(1, iot_count)
         
         if self.use_dataset:
-            # Pick a "Device" to be the compromised IoT
             devices = self.loader.get_devices()
             if devices:
                 src_ip = random.choice(devices)
                 dev_name = f"iot-{src_ip.split('.')[-1]}"
             else:
-                 # Fallback if no devices detected
                  src_ip = f"192.168.1.{200 + victim_idx}"
                  dev_name = f"iot-device-{victim_idx}"
         else:
@@ -101,7 +99,7 @@ class AttackSimulator:
             
         return logs
 
-    def generate_dns_tunneling(self, start_time: datetime, duration_hours: int) -> List[Dict[str, Any]]:
+    def generate_dns_tunneling(self, start_time: datetime, duration_hours: int, src_ip_override: str = None) -> List[Dict[str, Any]]:
         if not self.dns_config["enabled"]:
             return []
             
@@ -110,7 +108,9 @@ class AttackSimulator:
         
     
         src_ip = "192.168.1.105"
-        if self.use_dataset:
+        if src_ip_override:
+            src_ip = src_ip_override
+        elif self.use_dataset:
             devices = self.loader.get_devices()
             if devices:
                 src_ip = random.choice(devices) 
@@ -153,7 +153,7 @@ class AttackSimulator:
             
         return logs
 
-    def generate_beaconing(self, start_time: datetime, duration_hours: int) -> List[Dict[str, Any]]:
+    def generate_beaconing(self, start_time: datetime, duration_hours: int, src_ip_override: str = None) -> List[Dict[str, Any]]:
         if not self.beacon_config["enabled"]:
             return []
             
@@ -163,7 +163,9 @@ class AttackSimulator:
         jitter = self.beacon_config["jitter_percent"]
         
         src_ip = "192.168.1.55"
-        if self.use_dataset:
+        if src_ip_override:
+            src_ip = src_ip_override
+        elif self.use_dataset:
              devices = self.loader.get_devices()
              if devices:
                  src_ip = random.choice(devices)

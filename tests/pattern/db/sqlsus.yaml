@@ -1,0 +1,71 @@
+attack:
+  name: suspicious_sql_query
+  category: database
+  severity: medium
+  mitre:
+    techniques:
+      - T1190
+      - T1505.001
+
+preconditions:
+  database_type:
+    - mysql
+    - postgresql
+  query_logging: enabled
+  user_role:
+    - application_user
+    - db_user
+
+event_sequence:
+  type: single_or_burst
+  time_window_seconds: 60
+  min_events: 1
+  max_events: 5
+
+query_patterns:
+  destructive:
+    examples:
+      - "DROP TABLE users;"
+      - "TRUNCATE TABLE audit_logs;"
+  reconnaissance:
+    examples:
+      - "SELECT * FROM information_schema.tables;"
+      - "SELECT * FROM users;"
+  exfiltration:
+    examples:
+      - "SELECT * FROM credit_cards;"
+      - "SELECT * FROM customer_data;"
+
+log_fields:
+  timestamp: auto
+  host: from_inventory
+  database_name:
+    values:
+      - app_db
+      - prod_db
+  database_user:
+    values:
+      - app_user
+      - reporting_user
+      - compromised_user
+  sql_query:
+    source: query_patterns
+  status:
+    values:
+      - success
+      - error
+
+noise:
+  before:
+    normal_queries: 10
+  after:
+    normal_queries: 5
+
+sigma_mapping:
+  rule_id: d84c0ded-edd7-4123-80ed-348bb3ccc4d5
+  expected_match_field: sql_query
+  expected_keywords:
+    - drop
+    - truncate
+    - dump
+    - select *
