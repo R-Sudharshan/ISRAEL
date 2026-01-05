@@ -9,11 +9,11 @@ def detect_ssh_abuse(log_entry, config=None):
     # IoT Device Types often targeted or used as jump hosts
     SUSPICIOUS_IOT_TYPES = ['camera', 'dvr', 'nvr', 'printer', 'router', 'thermostat']
     
-    device_type = log_entry.get('device_type', '').lower()
-    protocol = log_entry.get('protocol', '').lower()
-    action = log_entry.get('action', '').lower()
+    device_type = str(log_entry.get('device_type', '')).lower()
+    protocol = str(log_entry.get('protocol', '')).lower()
+    action = str(log_entry.get('action', '')).lower()
     
-    if protocol != 'ssh':
+    if protocol not in ['ssh', '6', 'tcp']:
         return None
 
     detections = []

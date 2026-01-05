@@ -1,6 +1,8 @@
 import random
 import ipaddress
 import string
+from dataset_loader import DatasetLoader
+import string
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 
@@ -17,6 +19,11 @@ class AttackSimulator:
         
         self.external_cidrs = [ipaddress.IPv4Network(cidr) for cidr in config["network"]["external_cidrs"]]
         self.internal_cidrs = [ipaddress.IPv4Network(cidr) for cidr in config["network"]["internal_cidrs"]]
+        
+        # Dataset Integration
+        self.use_dataset = config.get("dataset", {}).get("enabled", False)
+        if self.use_dataset:
+            self.loader = DatasetLoader(config["dataset"]["path"])
 
     def _get_random_external_ip(self) -> str:
         subnet = random.choice(self.external_cidrs)
@@ -32,7 +39,7 @@ class AttackSimulator:
         offset_seconds = random.randint(0, duration_hours * 3600)
         return base_time + timedelta(seconds=offset_seconds)
 
-    def generate_iot_bruteforce(self, start_time: datetime, duration_hours: int) -> List[Dict[str, Any]]:
+    def generate_iot_bruteforce(self, start_time: datetime, duration_hours: int, src_ip_override: str = None) -> List[Dict[str, Any]]:
         if not self.iot_config["enabled"]:
             return []
             
@@ -43,9 +50,18 @@ class AttackSimulator:
         
         iot_count = self.config["devices"]["iot"]["count"]
         victim_idx = random.randint(1, iot_count)
-        src_ip = f"192.168.1.{200 + victim_idx}"
-        dev_name = f"{self.config['devices']['iot']['prefix']}{victim_idx}"
         
+        if self.use_dataset:
+            devices = self.loader.get_devices()
+            if devices:
+                src_ip = random.choice(devices)
+                dev_name = f"iot-{src_ip.split('.')[-1]}"
+            else:
+                 src_ip = f"192.168.1.{200 + victim_idx}"
+                 dev_name = f"iot-device-{victim_idx}"
+        else:
+            src_ip = f"192.168.1.{200 + victim_idx}"
+            dev_name = f"{self.config['devices']['iot']['prefix']}{victim_idx}"
         
         dst_ip = self._get_random_external_ip()
         
@@ -83,7 +99,7 @@ class AttackSimulator:
             
         return logs
 
-    def generate_dns_tunneling(self, start_time: datetime, duration_hours: int) -> List[Dict[str, Any]]:
+    def generate_dns_tunneling(self, start_time: datetime, duration_hours: int, src_ip_override: str = None) -> List[Dict[str, Any]]:
         if not self.dns_config["enabled"]:
             return []
             
@@ -91,7 +107,13 @@ class AttackSimulator:
         domain_suffix = self.dns_config["domain_suffix"]
         
     
-        src_ip = "192.168.1.105" 
+        src_ip = "192.168.1.105"
+        if src_ip_override:
+            src_ip = src_ip_override
+        elif self.use_dataset:
+            devices = self.loader.get_devices()
+            if devices:
+                src_ip = random.choice(devices) 
         dns_server = self.config["network"]["dns_servers"][0] # 8.8.8.8
         
    
@@ -131,7 +153,7 @@ class AttackSimulator:
             
         return logs
 
-    def generate_beaconing(self, start_time: datetime, duration_hours: int) -> List[Dict[str, Any]]:
+    def generate_beaconing(self, start_time: datetime, duration_hours: int, src_ip_override: str = None) -> List[Dict[str, Any]]:
         if not self.beacon_config["enabled"]:
             return []
             
@@ -141,6 +163,12 @@ class AttackSimulator:
         jitter = self.beacon_config["jitter_percent"]
         
         src_ip = "192.168.1.55"
+        if src_ip_override:
+            src_ip = src_ip_override
+        elif self.use_dataset:
+             devices = self.loader.get_devices()
+             if devices:
+                 src_ip = random.choice(devices)
         
         current_time = start_time
         end_time = start_time + timedelta(hours=duration_hours)
